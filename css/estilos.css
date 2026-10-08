@@ -1,0 +1,88 @@
+/* ===== Página ===== */
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #05070c;
+  color: #dde;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* El lienzo ocupa toda la ventana */
+#lienzo {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+}
+
+/* ===== Panel de debug ===== */
+#panel-debug {
+  position: fixed;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 280px;
+  max-height: 84vh;
+  overflow: auto;
+  background: rgba(8, 12, 20, .9);
+  border: 1px solid #2a3550;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+#panel-debug.oculto { display: none; }
+
+#panel-debug h3 { margin: 0 0 6px; font-size: 13px; color: #ffb36b; }
+#panel-debug h4 {
+  margin: 10px 0 4px;
+  font-size: 11px;
+  color: #9ae6ff;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+#panel-debug .estadisticas {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 11px;
+  color: #9fc3ff;
+  background: #0b1120;
+  border-radius: 5px;
+  padding: 6px;
+  margin: 6px 0;
+  white-space: pre;
+}
+
+#panel-debug .slider { margin: 5px 0; }
+#panel-debug .slider label { display: flex; justify-content: space-between; gap: 8px; }
+#panel-debug .slider b {
+  font-family: ui-monospace, Consolas, monospace;
+  font-weight: normal;
+  color: #ffd38a;
+}
+#panel-debug input[type=range] { width: 100%; margin: 2px 0 0; }
+
+#panel-debug button {
+  background: #b5451b;
+  color: #fff;
+  border: 0;
+  border-radius: 4px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-weight: 600;
+  margin-top: 8px;
+  width: 100%;
+}
+#panel-debug button:hover { background: #d4561f; }
+
+#panel-debug .casilla { display: flex; align-items: center; gap: 6px; margin: 2px 0; }
+
+/* Cuadraditos de color de la leyenda de materiales */
+.leyenda span {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin: 0 3px 0 6px;
+  vertical-align: -1px;
+  border-radius: 2px;
+}

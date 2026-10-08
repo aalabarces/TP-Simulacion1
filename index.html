@@ -1,17 +1,48 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TP Simulación 1</title>
-    <link rel="stylesheet" href="styles.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fire Splash</title>
+<link rel="stylesheet" href="css/estilos.css">
 </head>
 <body>
-    <canvas id="gameCanvas"></canvas>
+
+<!-- Lienzo donde se dibuja todo el juego -->
+<canvas id="lienzo"></canvas>
+
+<!-- Panel de debug (se abre/cierra con la tecla P) -->
+<div id="panel-debug" class="oculto">
+  <h3>Debug · Fire Splash (P)</h3>
+  <label class="casilla"><input type="checkbox" id="casilla-temperatura"> Vista temperatura (T)</label>
+  <label class="casilla"><input type="checkbox" id="casilla-grilla"> Vista grilla / estados (G)</label>
+  <div class="leyenda" id="leyenda"></div>
+  <div class="estadisticas" id="estadisticas"></div>
+  <h4>Parámetros</h4>
+  <div id="contenedor-sliders"></div>
+  <button id="boton-nuevo-mapa">Nuevo mapa (R)</button>
+</div>
+
+<!--
+  Los scripts se cargan EN ORDEN: cada archivo usa lo que definieron los anteriores.
+  No se usan módulos ES para que el juego funcione abriendo el HTML con doble clic (file://).
+-->
+<script src="js/configuracion.js"></script>   <!-- constantes, materiales y parámetros ajustables -->
+<script src="js/utilidades.js"></script>      <!-- números aleatorios, ruido, colores -->
+<script src="js/grilla.js"></script>          <!-- estado de la grilla (Euleriano) -->
+<script src="js/generador-mapa.js"></script>  <!-- mapa procedural simétrico -->
+<script src="js/temperatura.js"></script>     <!-- difusión de calor y cambios de estado -->
+<script src="js/fluidos.js"></script>         <!-- autómata celular: agua y magma -->
+<script src="js/particulas-agua.js"></script> <!-- agua en caída libre (Lagrangiano) -->
+<script src="js/efectos.js"></script>         <!-- vapor, chispas, humo (solo visual) -->
+<script src="js/jugador.js"></script>         <!-- elementales: movimiento, daño, curación -->
+<script src="js/proyectiles.js"></script>     <!-- bola de fuego, magma y explosiones -->
+<script src="js/turnos.js"></script>          <!-- flujo de la partida -->
+<script src="js/entrada.js"></script>         <!-- teclado -->
+<script src="js/dibujo-personajes.js"></script> <!-- llama y fósforo dibujados por código -->
+<script src="js/render.js"></script>          <!-- dibujo del mundo -->
+<script src="js/hud.js"></script>             <!-- interfaz: vida, tiempo, viento, armas -->
+<script src="js/debug.js"></script>           <!-- panel de debug y sliders -->
+<script src="js/principal.js"></script>       <!-- bucle principal del juego -->
 </body>
-<script src="pixi/pixi.js"></script>
-<script src="pixi/pixi.min.js"></script>
-<script src="grid.js"></script>
-<script src="cell.js"></script>
-<script src="game.js"></script>
 </html>
