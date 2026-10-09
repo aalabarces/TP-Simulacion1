@@ -66,12 +66,14 @@ function rectanguloTocaSolido(x, y, ancho, alto) {
   return false;
 }
 
-/* Busca la primera fila (desde arriba) donde el jugador apoyaría los pies. */
+/* Busca la primera fila (desde arriba) donde el jugador apoyaría los pies.
+   Se empieza por debajo del techo (que baja DESCENSO_TECHO filas); si no, el
+   jugador aparecería metido en el hielo y el choque lo empujaría hacia arriba. */
 function buscarAlturaDeAparicion(x, ancho, alto) {
-  for (let y = 40; y < ALTO_GRILLA - 10; y++) {
+  for (let y = 50 + DESCENSO_TECHO; y < ALTO_GRILLA - 10; y++) {
     if (rectanguloTocaSolido(x, y, ancho, alto)) return y - 1;
   }
-  return 60;
+  return 60 + DESCENSO_TECHO;
 }
 
 /* Qué fracción del hitbox está cubierta de agua y si la cabeza está tapada. */
@@ -84,11 +86,13 @@ function medirInmersion(jugador) {
     for (let columna = primeraColumna; columna <= ultimaColumna; columna++) {
       if (!estaDentroDeLaGrilla(columna, fila)) continue;
       celdasTotales++;
-      const hayAgua = material[fila * ANCHO_GRILLA + columna] === AGUA;
-      if (hayAgua) celdasConAgua++;
+      const indiceCelda = fila * ANCHO_GRILLA + columna;
+      // Una celda con poca agua moja proporcionalmente (masa 0 = recién creada = llena)
+      const agua = material[indiceCelda] === AGUA ? Math.min(1, masaAgua[indiceCelda] || 1) : 0;
+      celdasConAgua += agua;
       if (fila === primeraFila) {           // la fila de arriba es la "cabeza"
         celdasCabeza++;
-        if (hayAgua) celdasCabezaConAgua++;
+        if (agua >= 0.5) celdasCabezaConAgua++;
       }
     }
   }

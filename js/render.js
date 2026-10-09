@@ -75,7 +75,14 @@ const COLORES_VISTA_GRILLA = [
   colorPixel(150, 90, 50)   // magma sólido
 ];
 
+/* Celdas de agua de superficie con menos de una celda de agua: se pintan como
+   aire en la imagen del terreno y después se dibujan con altura parcial
+   (ver dibujarAguaParcial), así la superficie se ve suave y no escalonada. */
+const celdasDeAguaParcial = [];
+const MASA_PARA_CELDA_LLENA = 0.97;
+
 function pintarTerreno() {
+  celdasDeAguaParcial.length = 0;
   if (vista.temperatura) { pintarVistaTemperatura(); return; }
   if (vista.grilla) {
     for (let i = 0; i < TOTAL_CELDAS; i++) pixelesTerreno[i] = COLORES_VISTA_GRILLA[material[i]];
@@ -132,6 +139,12 @@ function pintarTerreno() {
             // Superficie: clara y con un brillo ondulante
             const onda = Math.sin(tiempoTotal * 3 + x * 0.45) * 12;
             rojo = 120 + onda; verde = 195 + onda; azul = 250;
+            const masa = masaAgua[indice] || 1; // masa 0 = recién creada = llena
+            if (masa < MASA_PARA_CELDA_LLENA) {
+              // Celda parcial: en la imagen queda como aire; el agua se dibuja encima
+              celdasDeAguaParcial.push(indice, masa, onda);
+              rojo = fondoRojo[indice]; verde = fondoVerde[indice]; azul = fondoAzul[indice];
+            }
           } else {
             // Agua semitransparente: 25% fondo + 75% azul
             const oscuridad = profundidad / 5;
@@ -206,6 +219,7 @@ function dibujarCuadro() {
   ctx.drawImage(lienzoTerreno, 0, 0);
 
   if (vista.grilla) dibujarLineasDeGrilla(pixelesPorCelda);
+  if (!vista.grilla && !vista.temperatura) dibujarAguaParcial();
   dibujarLuces();
   dibujarGotas();
   dibujarProyectil();
@@ -223,6 +237,17 @@ function dibujarLineasDeGrilla(pixelesPorCelda) {
   for (let x = 0; x <= ANCHO_GRILLA; x++) { ctx.moveTo(x, 0); ctx.lineTo(x, ALTO_GRILLA); }
   for (let y = 0; y <= ALTO_GRILLA; y++) { ctx.moveTo(0, y); ctx.lineTo(ANCHO_GRILLA, y); }
   ctx.stroke();
+}
+
+/* Agua de superficie con altura parcial: un rectángulo en el fondo de la celda,
+   de alto igual a su masa. */
+function dibujarAguaParcial() {
+  for (let n = 0; n < celdasDeAguaParcial.length; n += 3) {
+    const indice = celdasDeAguaParcial[n], masa = celdasDeAguaParcial[n + 1], onda = celdasDeAguaParcial[n + 2];
+    const x = indice % ANCHO_GRILLA, y = Math.floor(indice / ANCHO_GRILLA);
+    ctx.fillStyle = `rgb(${120 + onda | 0},${195 + onda | 0},250)`;
+    ctx.fillRect(x, y + 1 - masa, 1, masa);
+  }
 }
 
 /* Círculo de luz con degradé que se desvanece hacia el borde. */

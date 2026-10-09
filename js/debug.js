@@ -84,7 +84,8 @@ function actualizarEstadisticas(estadisticas) {
     `simulación  ${estadisticas.msSimulacion.toFixed(2)} ms/paso\n` +
     `dibujo      ${estadisticas.msDibujo.toFixed(2)} ms\n` +
     `grilla      ${ANCHO_GRILLA}×${ALTO_GRILLA} (${TOTAL_CELDAS} celdas)\n` +
-    `agua grilla ${celdasDeAguaEnGrilla}\n` +
+    `agua grilla ${celdasDeAguaEnGrilla}  masa ${masaTotalDeAgua.toFixed(0)}\n` +
+    `flujos/paso ${celdasDeAguaActivas}\n` +
     `partículas  ${particulasAgua.length}  efectos ${efectos.length}\n` +
     `fase        ${juego.pantalla}/${juego.fase}\n` +
     `viento      ${viento.toFixed(2)}\n` +

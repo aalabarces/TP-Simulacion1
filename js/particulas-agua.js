@@ -75,18 +75,22 @@ function moverGota(gota, dt) {
   return true;
 }
 
-/* La gota vuelve a ser una celda de AGUA en la última celda libre que ocupó.
-   Si esa celda ya se llenó (otra gota llegó antes), busca hacia arriba. */
+/* La gota vuelve a la grilla: su masa se SUMA a la celda donde chocó (la última
+   celda libre que ocupó). Si esa celda ya se llenó con agua se le suma ahí; si
+   se volvió sólida, sube hasta encontrar aire o agua. No hay torres: el exceso
+   de una celda lo reparte el flujo de masa (ver fluidos.js). */
 function devolverAGrilla(gota) {
   const x = limitar(Math.floor(gota.x), 0, ANCHO_GRILLA - 1);
-  const y = Math.floor(gota.y);
-  for (let subir = 0; subir < 10; subir++) {
-    const fila = y - subir;
-    if (fila < 0) return;
+  for (let fila = Math.floor(gota.y); fila >= 0; fila--) {
     const indice = fila * ANCHO_GRILLA + x;
     if (material[indice] === AIRE) {
       material[indice] = AGUA;
+      masaAgua[indice] = gota.masa;
       temperatura[indice] = gota.grados;
+      return;
+    }
+    if (material[indice] === AGUA) {
+      masaAgua[indice] += gota.masa;
       return;
     }
   }
@@ -105,7 +109,7 @@ function mojarJugadores(gota) {
     if (!adentro) continue;
 
     gota.jugadoresGolpeados |= bitDelJugador;
-    aplicarDanio(jugador, PARAMETROS.danioPorGota);
+    aplicarDanio(jugador, PARAMETROS.danioPorGota * gota.masa); // una gota con menos agua moja menos
     // Transferencia de impulso: la gota empuja al jugador en su dirección
     jugador.velocidadX += gota.velocidadX * 0.05;
     jugador.velocidadY += gota.velocidadY * 0.02;

@@ -49,7 +49,7 @@ const PARAMETROS = {
   vientoMaximo: 1,                // el viento de cada turno se sortea entre -max y +max
   vientoSobreProyectiles: 28,     // aceleración horizontal que el viento le da a los proyectiles
   vientoSobreAgua: 22,            // ídem para las gotas de agua en caída libre
-  dispersionAgua: 4,              // cuántas celdas puede correrse el agua de costado por paso
+  subpasosAgua: 3,                // veces por paso que fluye el agua: más = se nivela más rápido (cuesta CPU)
   potenciaMaxima: 140,            // velocidad del proyectil con la carga al 100% (celdas/s)
 
   // Temperatura (en grados)
@@ -86,7 +86,7 @@ const SLIDERS_DEBUG = [
   ['vientoMaximo', 'Viento máximo', 0, 2, 0.05],
   ['vientoSobreProyectiles', 'Viento → proyectiles', 0, 80, 1],
   ['vientoSobreAgua', 'Viento → agua', 0, 80, 1],
-  ['dispersionAgua', 'Dispersión agua', 1, 10, 1],
+  ['subpasosAgua', 'Nivelación agua (subpasos)', 1, 8, 1],
   ['potenciaMaxima', 'Potencia máx.', 60, 250, 5],
   ['Temperatura'],
   ['temperaturaAmbiente', 'Temp. ambiente', -30, 5, 0.5],

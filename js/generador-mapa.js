@@ -13,6 +13,11 @@
 
 const MITAD_ANCHO = ANCHO_GRILLA / 2;
 
+/* Cuántas filas se baja el techo (y con él las reservas de agua). Con la potencia
+   máxima el tiro no llega a más de ~55 celdas sobre el tirador a media distancia:
+   un techo más alto dejaba las reservas fuera de alcance. */
+const DESCENSO_TECHO = 30;
+
 /* Pinta la celda (x, y) de la mitad izquierda y su espejo en la mitad derecha.
    El espejo de la columna x es la columna (ANCHO_GRILLA - 1 - x). */
 function pintarSimetrico(x, y, tipoMaterial, grados) {
@@ -38,6 +43,7 @@ function generarMapa(semilla) {
   mapa.semilla = semilla;
   mapa.filaSuperiorLago = ALTO_GRILLA - 16;
   material.fill(AIRE);
+  masaAgua.fill(0); // el agua que se pinte después queda con masa 0 = celda llena
   temperatura.fill(PARAMETROS.temperaturaAmbiente);
 
   generarTechoYLago(semilla);
@@ -56,8 +62,8 @@ function generarMapa(semilla) {
 function generarTechoYLago(semilla) {
   const ambiente = PARAMETROS.temperaturaAmbiente;
   for (let x = 0; x < MITAD_ANCHO; x++) {
-    // Grosor del techo: entre 8 y 19 celdas, variando suavemente con el ruido
-    const grosorTecho = Math.round(8 + ruidoFractal(x * 0.045, 0.5, semilla) * 11);
+    // Grosor del techo: entre 8 y 19 celdas (más DESCENSO_TECHO), variando suavemente con el ruido
+    const grosorTecho = Math.round(8 + DESCENSO_TECHO + ruidoFractal(x * 0.045, 0.5, semilla) * 11);
     for (let y = 0; y < grosorTecho; y++) {
       // Las 2 primeras filas son piedra: el techo nunca se puede atravesar
       pintarSimetrico(x, y, y < 2 ? PIEDRA : HIELO, ambiente);
@@ -98,7 +104,7 @@ function generarReservasDeAgua(aleatorioEntre, enteroEntre, aleatorio) {
   if (aleatorio() < 0.6) reservas.push({ centroX: MITAD_ANCHO - 0.5, radioX: enteroEntre(10, 15), radioY: enteroEntre(5, 7) });
 
   for (const reserva of reservas) {
-    const centroY = 3 + reserva.radioY;
+    const centroY = 3 + DESCENSO_TECHO + reserva.radioY;
     const margen = 5; // "hombros" de hielo a cada lado de la reserva
     for (let x = Math.floor(reserva.centroX - reserva.radioX - margen); x <= Math.ceil(reserva.centroX + reserva.radioX + margen); x++) {
       if (x < 0 || x >= MITAD_ANCHO) continue;
@@ -133,7 +139,7 @@ function generarEstalactitas(aleatorioEntre, enteroEntre) {
     // Buscar dónde termina el techo en esa columna
     let filaBorde = 0;
     while (filaBorde < ALTO_GRILLA - 1 && material[indiceDeCelda(x0, filaBorde)] !== AIRE) filaBorde++;
-    if (filaBorde > 40) continue;
+    if (filaBorde > 40 + DESCENSO_TECHO) continue;
 
     const largo = enteroEntre(4, 10);
     const anchoBase = aleatorioEntre(1.5, 3.2);

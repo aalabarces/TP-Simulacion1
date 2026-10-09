@@ -76,6 +76,7 @@ function enfriarYCambiarEstados(dt) {
     if (tipo === HIELO) {
       if (grados > PARAMETROS.temperaturaFusion) {
         material[indice] = AGUA;
+        masaAgua[indice] = MASA_MAXIMA; // el hielo derretido da una celda llena
         temperatura[indice] = 1; // agua recién derretida, apenas sobre 0°
       }
     } else if (tipo === AGUA) {
@@ -86,7 +87,9 @@ function enfriarYCambiarEstados(dt) {
       } else if (indice >= primerIndiceDelLago) {
         if (grados < TEMPERATURA_MINIMA_LAGO) temperatura[indice] = TEMPERATURA_MINIMA_LAGO;
       } else if (grados < PARAMETROS.temperaturaCongelamiento && !ocupadaPorJugador[indice]) {
-        material[indice] = HIELO;
+        // Una celda con poca agua (película fina) se seca en vez de crear hielo nuevo
+        material[indice] = masaAgua[indice] >= 0.5 || masaAgua[indice] === 0 ? HIELO : AIRE;
+        masaAgua[indice] = 0;
         temperatura[indice] = PARAMETROS.temperaturaCongelamiento;
       }
     } else if (tipo === MAGMA) {

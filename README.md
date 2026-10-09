@@ -43,9 +43,9 @@ Cada paso de 1/60 s, en este orden (`principal.js → simularPaso`):
 1. **Ocupación:** se marcan las celdas tapadas por los jugadores.
 2. **Temperatura:** el calor se difunde entre vecinas, todo se enfría hacia el
    ambiente y se aplican los cambios de estado (hielo↔agua, agua→vapor, magma→sólido).
-3. **Fluidos (Euleriano):** el agua apoyada se nivela de costado; el magma cae y se escurre.
+3. **Fluidos (Euleriano):** cada celda de agua guarda cuánta agua tiene (`masaAgua`): la masa cae, se iguala con las vecinas y el exceso sube, así la superficie queda pareja y el agua se detiene sola; el agua sin apoyo pasa a partícula. El magma cae y se escurre.
 4. **Partículas (Lagrangiano):** el agua sin apoyo cae con gravedad y viento, moja
-   y empuja a los jugadores, y vuelve a la grilla al tocar algo.
+   y empuja a los jugadores, y al tocar algo suma su masa a la grilla.
 5. **Proyectil, jugadores, efectos y turnos.**
 
 ## Controles

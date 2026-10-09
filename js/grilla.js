@@ -16,6 +16,11 @@ const material = new Uint8Array(TOTAL_CELDAS);        // qué hay en cada celda 
 const temperatura = new Float32Array(TOTAL_CELDAS);   // grados de cada celda
 const temperaturaNueva = new Float32Array(TOTAL_CELDAS); // copia de trabajo para la difusión
 
+/* Cuánta agua tiene cada celda de AGUA (1 = llena). Vale 0 donde no hay agua.
+   Ver fluidos.js. */
+const masaAgua = new Float32Array(TOTAL_CELDAS);
+const masaAguaNueva = new Float32Array(TOTAL_CELDAS);    // copia de trabajo del flujo
+
 /* Para no mover la misma gota dos veces en un mismo paso, se anota el
    número de paso en que se movió cada celda. */
 const pasoEnQueSeMovio = new Uint32Array(TOTAL_CELDAS);
@@ -39,6 +44,8 @@ const mapa = {
 
 let numeroDePaso = 0;            // cuántos pasos de fluidos se simularon
 let celdasDeAguaEnGrilla = 0;    // estadística para el panel de debug
+let celdasDeAguaActivas = 0;     // flujos de agua en el último paso (0 = agua estable)
+let masaTotalDeAgua = 0;         // suma de masaAgua (se conserva salvo evaporación y descartes)
 
 function indiceDeCelda(x, y) {
   return y * ANCHO_GRILLA + x;
