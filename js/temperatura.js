@@ -17,7 +17,8 @@
    3) CAMBIOS DE ESTADO según la temperatura resultante:
         HIELO  > 0°           -> AGUA  (se derrite)
         AGUA   >= 100°        -> AIRE  (se evapora, larga vapor)
-        AGUA   < -3°          -> HIELO (se congela; nunca en el lago ni dentro de un jugador)
+        AGUA   < -3°          -> HIELO, pero recién después de perder el CALOR LATENTE
+                                 (nunca en el lago ni dentro de una llama)
         MAGMA  < 600°         -> MAGMA_SOLIDO
    ============================================================================= */
 
@@ -78,22 +79,41 @@ function enfriarYCambiarEstados(dt) {
         material[indice] = AGUA;
         masaAgua[indice] = MASA_MAXIMA; // el hielo derretido da una celda llena
         temperatura[indice] = 1; // agua recién derretida, apenas sobre 0°
+        despertarCelda(indice);  // agua nueva: el autómata tiene que moverla
       }
     } else if (tipo === AGUA) {
       if (grados >= TEMPERATURA_EVAPORACION) {
         material[indice] = AIRE;
+        masaAgua[indice] = 0;
         temperatura[indice] = 60;
+        despertarCelda(indice);  // quedó un hueco: el agua de alrededor puede correrse
         if (Math.random() < 0.5) crearVapor(indice % ANCHO_GRILLA + 0.5, Math.floor(indice / ANCHO_GRILLA) + 0.5, 1);
       } else if (indice >= primerIndiceDelLago) {
         if (grados < TEMPERATURA_MINIMA_LAGO) temperatura[indice] = TEMPERATURA_MINIMA_LAGO;
-      } else if (grados < PARAMETROS.temperaturaCongelamiento && !ocupadaPorJugador[indice]) {
-        // Una celda con poca agua (película fina) se seca en vez de crear hielo nuevo
-        material[indice] = masaAgua[indice] >= 0.5 || masaAgua[indice] === 0 ? HIELO : AIRE;
-        masaAgua[indice] = 0;
-        temperatura[indice] = PARAMETROS.temperaturaCongelamiento;
+      } else if (grados < PARAMETROS.temperaturaCongelamiento && !ocupadaPorLlama[indice]) {
+        // CALOR LATENTE: el agua no se congela apenas llega al punto de congelamiento.
+        // Se queda en esa temperatura y todo el frío que reciba de más se va
+        // acumulando; recién cuando acumuló "calorLatente" grados se vuelve hielo.
+        // (Es lo que pasa en la realidad: congelar agua que ya está a 0° requiere
+        // sacarle mucho calor más, por eso un lago tarda tanto en congelarse.)
+        const congelamiento = PARAMETROS.temperaturaCongelamiento;
+        frioAcumulado[indice] += congelamiento - grados;
+        temperatura[indice] = congelamiento;
+        if (frioAcumulado[indice] >= PARAMETROS.calorLatente) congelarCelda(indice);
       }
     } else if (tipo === MAGMA) {
       if (grados < PARAMETROS.temperaturaSolidificacion) material[indice] = MAGMA_SOLIDO;
     }
+    // Donde ya no hay agua no queda frío acumulado (si vuelve a haber agua, arranca de cero)
+    if (material[indice] !== AGUA && frioAcumulado[indice] !== 0) frioAcumulado[indice] = 0;
   }
+}
+
+function congelarCelda(indice) {
+  // Una celda con poca agua (película fina) se seca en vez de crear hielo nuevo
+  material[indice] = masaAgua[indice] >= 0.5 || masaAgua[indice] === 0 ? HIELO : AIRE;
+  masaAgua[indice] = 0;
+  frioAcumulado[indice] = 0;
+  temperatura[indice] = PARAMETROS.temperaturaCongelamiento;
+  despertarCelda(indice);  // si se secó (quedó aire), el agua de alrededor puede correrse
 }

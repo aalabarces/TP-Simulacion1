@@ -218,13 +218,17 @@ function dibujarCuadro() {
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(lienzoTerreno, 0, 0);
 
-  if (vista.grilla) dibujarLineasDeGrilla(pixelesPorCelda);
+  if (vista.grilla) {
+    dibujarLineasDeGrilla(pixelesPorCelda);
+    dibujarBloquesDespiertos(pixelesPorCelda);
+  }
   if (!vista.grilla && !vista.temperatura) dibujarAguaParcial();
   dibujarLuces();
+  dibujarEstelasViento();
   dibujarGotas();
-  dibujarProyectil();
-  dibujarJugadores();
-  dibujarMira();
+  dibujarProyectiles();
+  dibujarTodasLasLlamas();
+  dibujarMiras();
   dibujarEfectos();
 
   dibujarHud(anchoPantalla, altoPantalla, unidad);
@@ -250,6 +254,22 @@ function dibujarAguaParcial() {
   }
 }
 
+/* Vista de grilla: los bloques que el autómata del agua va a calcular en el
+   próximo paso se marcan en amarillo. Los demás tienen el agua dormida. */
+function dibujarBloquesDespiertos(pixelesPorCelda) {
+  ctx.fillStyle = 'rgba(255,220,0,0.10)';
+  ctx.strokeStyle = 'rgba(255,220,0,0.55)';
+  ctx.lineWidth = 1 / pixelesPorCelda;
+  for (let bloque = 0; bloque < bloqueDespierto.length; bloque++) {
+    if (!bloqueDespierto[bloque]) continue;
+    const bx = bloque % BLOQUES_X, by = (bloque - bx) / BLOQUES_X;
+    const x = bx * TAMANIO_BLOQUE, y = by * TAMANIO_BLOQUE;
+    const ancho = Math.min(TAMANIO_BLOQUE, ANCHO_GRILLA - x), alto = Math.min(TAMANIO_BLOQUE, ALTO_GRILLA - y);
+    ctx.fillRect(x, y, ancho, alto);
+    ctx.strokeRect(x, y, ancho, alto);
+  }
+}
+
 /* Círculo de luz con degradé que se desvanece hacia el borde. */
 function dibujarHalo(x, y, radio, colorRGB, opacidad) {
   const degrade = ctx.createRadialGradient(x, y, 0, x, y, radio);
@@ -262,12 +282,12 @@ function dibujarHalo(x, y, radio, colorRGB, opacidad) {
 /* Luces con mezcla aditiva ('lighter'): los colores se SUMAN al fondo, como la luz real. */
 function dibujarLuces() {
   ctx.globalCompositeOperation = 'lighter';
-  for (const jugador of jugadores) {
-    if (!jugador.vivo) continue;
-    const opacidad = 0.12 + 0.12 * (jugador.vida / VIDA_MAXIMA); // más vida, más luz
-    dibujarHalo(jugador.centroX, jugador.centroY, 22, jugador.paleta.brillo.join(','), opacidad);
+  for (const llama of llamas) {
+    if (!llama.vivo) continue;
+    const opacidad = 0.12 + 0.12 * (llama.vida / VIDA_MAXIMA); // más vida, más luz
+    dibujarHalo(llama.centroX, llama.centroY, 22, llama.paleta.brillo.join(','), opacidad);
   }
-  if (proyectil) {
+  for (const proyectil of proyectiles) {
     dibujarHalo(proyectil.x, proyectil.y, 10, proyectil.arma === ARMA_BOLA_DE_FUEGO ? '255,150,40' : '255,80,20', 0.55);
   }
   for (const efecto of efectos) {
@@ -288,63 +308,83 @@ function dibujarGotas() {
   ctx.fill();
 }
 
-function dibujarProyectil() {
-  if (!proyectil) return;
-  if (proyectil.arma === ARMA_BOLA_DE_FUEGO) {
-    ctx.fillStyle = '#fff3c4';
-    ctx.beginPath(); ctx.arc(proyectil.x, proyectil.y, 1.1, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = '#ff8a1e'; ctx.lineWidth = 0.6; ctx.stroke();
-  } else {
-    ctx.fillStyle = '#ff5a14';
-    ctx.beginPath(); ctx.arc(proyectil.x, proyectil.y, 1.3, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#3a1608';
-    ctx.beginPath(); ctx.arc(proyectil.x - 0.3, proyectil.y - 0.3, 0.5, 0, Math.PI * 2); ctx.fill();
+function dibujarProyectiles() {
+  for (const proyectil of proyectiles) {
+    if (proyectil.arma === ARMA_BOLA_DE_FUEGO) {
+      ctx.fillStyle = '#fff3c4';
+      ctx.beginPath(); ctx.arc(proyectil.x, proyectil.y, 1.1, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#ff8a1e'; ctx.lineWidth = 0.6; ctx.stroke();
+    } else {
+      ctx.fillStyle = '#ff5a14';
+      ctx.beginPath(); ctx.arc(proyectil.x, proyectil.y, 1.3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#3a1608';
+      ctx.beginPath(); ctx.arc(proyectil.x - 0.3, proyectil.y - 0.3, 0.5, 0, Math.PI * 2); ctx.fill();
+    }
   }
 }
 
-function dibujarJugadores() {
-  for (const jugador of jugadores) {
-    const pies = jugador.y + jugador.alto;
-    if (jugador.vivo) {
-      dibujarLlama(ctx, jugador.centroX, pies + 0.3, 0.82, jugador.paleta, jugador.vida / VIDA_MAXIMA,
-                   tiempoTotal + jugador.numero * 3, jugador.mirando, jugador.tiempoHerido > 0);
-      if (jugador.curandose) {
+function dibujarTodasLasLlamas() {
+  for (const llama of llamas) {
+    const pies = llama.y + llama.alto;
+    if (llama.vivo) {
+      dibujarLlama(ctx, llama.centroX, pies + 0.3, 0.82, llama.paleta, llama.vida / VIDA_MAXIMA,
+                   tiempoTotal + llama.numero * 3, llama.mirando, llama.tiempoHerido > 0);
+      if (llama.curandose) {
         // "+" verde que sube en loop
         ctx.fillStyle = 'rgba(120,255,140,0.9)';
         ctx.font = '3px sans-serif';
-        ctx.fillText('+', jugador.centroX + 2.5, jugador.y - 1 - (tiempoTotal * 4 % 3));
+        ctx.fillText('+', llama.centroX + 2.5, llama.y - 1 - (tiempoTotal * 4 % 3));
       }
-      // Flechita sobre el jugador del turno
-      if (juego.pantalla === 'jugando' && jugador.numero === juego.jugadorActual && juego.fase !== 'asentando') {
-        const yFlecha = jugador.y - 9 + Math.sin(tiempoTotal * 5) * 0.6;
-        ctx.fillStyle = jugador.paleta.hud;
+      // Con varias llamas por equipo (modo Worms) se muestra la vida de cada una arriba
+      if (llamasPorEquipo() > 1) {
+        ctx.font = 'bold 2.6px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillText(Math.ceil(llama.vida), llama.centroX + 0.15, llama.y - 2.35); // sombra
+        ctx.fillStyle = llama.paleta.hud;
+        ctx.fillText(Math.ceil(llama.vida), llama.centroX, llama.y - 2.5);
+        ctx.textAlign = 'left';
+      }
+      // Flechita sobre la llama del turno (en tiempo real no hay turno)
+      if (juego.pantalla === 'jugando' && !esTiempoReal() && llama.numero === juego.llamaActual && juego.fase !== 'asentando') {
+        const yFlecha = llama.y - 9 + Math.sin(tiempoTotal * 5) * 0.6;
+        ctx.fillStyle = llama.paleta.hud;
         ctx.beginPath();
-        ctx.moveTo(jugador.centroX - 1.3, yFlecha);
-        ctx.lineTo(jugador.centroX + 1.3, yFlecha);
-        ctx.lineTo(jugador.centroX, yFlecha + 1.6);
+        ctx.moveTo(llama.centroX - 1.3, yFlecha);
+        ctx.lineTo(llama.centroX + 1.3, yFlecha);
+        ctx.lineTo(llama.centroX, yFlecha + 1.6);
         ctx.closePath();
         ctx.fill();
       }
     } else {
-      dibujarFosforo(ctx, jugador.centroX, pies, 0.9, jugador.mirando);
+      dibujarFosforo(ctx, llama.centroX, pies, 0.9, llama.mirando);
     }
     if (vista.grilla) {
       ctx.strokeStyle = '#ffeb3b'; ctx.lineWidth = 0.25;
-      ctx.strokeRect(jugador.x, jugador.y, jugador.ancho, jugador.alto); // hitbox
+      ctx.strokeRect(llama.x, llama.y, llama.ancho, llama.alto); // hitbox
     }
   }
 }
 
-/* Mira: puntos en la dirección del ángulo, retícula a 17 celdas y barra de potencia. */
-function dibujarMira() {
-  if (juego.pantalla !== 'jugando' || juego.fase !== 'apuntar') return;
-  const jugador = jugadores[juego.jugadorActual];
-  if (!jugador.vivo) return;
+/* Miras de las llamas que están apuntando: la del turno (por turnos, en la fase
+   'apuntar') o todas las vivas (tiempo real). */
+function dibujarMiras() {
+  if (juego.pantalla !== 'jugando') return;
+  if (esTiempoReal()) {
+    for (const llama of llamas) if (llama.vivo) dibujarMira(llama);
+  } else if (juego.fase === 'apuntar') {
+    const llama = llamaActual();
+    if (llama && llama.vivo) dibujarMira(llama);
+  }
+}
 
-  const anguloRadianes = jugador.angulo * Math.PI / 180;
-  const direccionX = Math.cos(anguloRadianes) * jugador.mirando;
+/* Mira: puntos en la dirección del ángulo, retícula a 17 celdas, barra de
+   potencia mientras carga y, en tiempo real, barra gris de recarga. */
+function dibujarMira(llama) {
+  const anguloRadianes = llama.angulo * Math.PI / 180;
+  const direccionX = Math.cos(anguloRadianes) * llama.mirando;
   const direccionY = -Math.sin(anguloRadianes);
-  const origenX = jugador.centroX, origenY = jugador.centroY - 1;
+  const origenX = llama.centroX, origenY = llama.centroY - 1;
 
   ctx.fillStyle = 'rgba(255,255,255,0.75)';
   for (let d = 5; d <= 14; d += 2.2) {
@@ -352,7 +392,7 @@ function dibujarMira() {
   }
 
   const reticulaX = origenX + direccionX * 17, reticulaY = origenY + direccionY * 17;
-  ctx.strokeStyle = jugador.paleta.hud; ctx.lineWidth = 0.4;
+  ctx.strokeStyle = llama.paleta.hud; ctx.lineWidth = 0.4;
   ctx.beginPath(); ctx.arc(reticulaX, reticulaY, 1.5, 0, Math.PI * 2); ctx.stroke();
   ctx.beginPath();
   ctx.moveTo(reticulaX - 2.4, reticulaY); ctx.lineTo(reticulaX - 0.8, reticulaY);
@@ -361,15 +401,21 @@ function dibujarMira() {
   ctx.moveTo(reticulaX, reticulaY + 0.8); ctx.lineTo(reticulaX, reticulaY + 2.4);
   ctx.stroke();
 
-  if (juego.cargando) {
-    const anchoBarra = 10, xBarra = jugador.centroX - anchoBarra / 2, yBarra = jugador.y - 5.5;
+  const anchoBarra = 10, xBarra = llama.centroX - anchoBarra / 2, yBarra = llama.y - 5.5;
+  if (llama.cargando) {
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
     ctx.fillRect(xBarra, yBarra, anchoBarra, 1.4);
     const degrade = ctx.createLinearGradient(xBarra, 0, xBarra + anchoBarra, 0);
     degrade.addColorStop(0, '#ffe066');
     degrade.addColorStop(1, '#ff3b1f');
     ctx.fillStyle = degrade;
-    ctx.fillRect(xBarra, yBarra, anchoBarra * juego.potencia, 1.4);
+    ctx.fillRect(xBarra, yBarra, anchoBarra * llama.potencia, 1.4);
+  } else if (llama.recarga > 0) {
+    // Se vacía a medida que pasa la recarga: cuando desaparece, ya se puede disparar
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(xBarra, yBarra, anchoBarra, 1);
+    ctx.fillStyle = 'rgba(200,210,225,0.8)';
+    ctx.fillRect(xBarra, yBarra, anchoBarra * llama.recarga / PARAMETROS.recargaDisparo, 1);
   }
 }
 

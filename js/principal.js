@@ -8,26 +8,31 @@
    no entrar en una espiral de lentitud.
    ============================================================================= */
 
+/* Qué controles recibe cada llama en este paso (null = no se mueve):
+   - Tiempo real: cada llama, los de su jugador (su esquema de teclado y su joystick).
+   - Por turnos: solo la llama del turno, con cualquier control, mientras apunta
+     (también cargando), mientras el proyectil vuela y durante el tiempo de escape. */
+function controlesDeLaLlama(llama) {
+  if (juego.pantalla !== 'jugando' || !llama.vivo) return null;
+  if (MODOS_DE_JUEGO[juego.modo].tiempoReal) return leerControles(llama.equipo);
+  const esSuTurno = llama.numero === juego.llamaActual;
+  const faseConMovimiento = juego.fase === 'apuntar' || juego.fase === 'vuelo' || juego.fase === 'escape';
+  return esSuTurno && faseConMovimiento ? leerControles(CUALQUIER_JUGADOR) : null;
+}
+
 /* Un paso de simulación: el orden importa. */
 function simularPaso(dt) {
-  marcarCeldasOcupadas();       // dónde están los jugadores (para magma y congelamiento)
+  marcarCeldasOcupadas();       // dónde están las llamas (para magma y congelamiento)
   simularTemperatura(dt);       // difusión de calor + cambios de estado
   simularFluidos();             // autómata celular del agua y el magma (Euleriano)
+  simularCascadas(dt);          // agua que entra por los costados y llena el lago
   simularParticulasAgua(dt);    // gotas en caída libre (Lagrangiano)
-  simularProyectil(dt);
+  simularProyectiles(dt);
 
-  for (const jugador of jugadores) {
-    // Solo el jugador del turno recibe controles, y no mientras carga el disparo
-    let controles = null;
-    const esSuTurno = juego.pantalla === 'jugando' && jugador.numero === juego.jugadorActual && jugador.vivo;
-    if (esSuTurno && ((juego.fase === 'apuntar' && !juego.cargando) || juego.fase === 'escape')) {
-      controles = leerControles();
-    }
-    actualizarJugador(jugador, dt, controles);
-    aplicarAuraDeCalor(jugador, dt);
-  }
+  for (const llama of llamas) actualizarLlama(llama, dt, controlesDeLaLlama(llama));
 
   simularEfectos(dt);
+  simularViento(dt);            // estelas visuales del viento
   actualizarTurno(dt);
 }
 
@@ -48,6 +53,7 @@ function cuadro(instante) {
   instanteAnterior = instante;
   tiempoAcumulado += transcurrido;
   tiempoTotal += transcurrido;
+  actualizarJoysticks(); // leer los joysticks una vez por cuadro (ver joystick.js)
 
   const inicioSimulacion = performance.now();
   let pasosHechos = 0;
@@ -60,6 +66,7 @@ function cuadro(instante) {
   const finSimulacion = performance.now();
 
   dibujarCuadro();
+  actualizarSonidos(); // carga, ambientes y sonidos acumulados del cuadro (ver sonido.js)
   const finDibujo = performance.now();
 
   // Estadísticas para el panel de debug (se refrescan 4 veces por segundo)

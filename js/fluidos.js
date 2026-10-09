@@ -28,6 +28,10 @@
      - Si toca AGUA: la evapora y se solidifica al instante (choque térmico).
      - Si abajo hay aire, cae.
      - Si no, con probabilidad "fluidezMagma" se corre una celda de costado.
+
+   OPTIMIZACIÓN: solo se calculan los BLOQUES DESPIERTOS (ver grilla.js). Toda
+   celda que tiene un flujo, se convierte en gota o tiene magma despierta su
+   zona; un bloque sin actividad en un paso se duerme en el siguiente.
    ============================================================================= */
 
 const MAXIMO_PARTICULAS_AGUA = 6000;
@@ -37,43 +41,40 @@ const COMPRESION_MAXIMA = 0.02;  // cuánto más que 1 puede tener una celda con
 const MASA_MINIMA = 0.02;        // menos que esto: la celda se vacía (se descarta)
 const FLUJO_MINIMO = 0.004;      // flujos menores se ignoran: así el agua se detiene
 
+const PASOS_ENTRE_CONTEOS = 30; // las estadísticas del agua total se recalculan cada medio segundo
+
 function simularFluidos() {
   const pasoActual = ++numeroDePaso;
-  let contadorAgua = 0;
-  let masaTotal = 0;
   celdasDeAguaActivas = 0;
 
   // Mientras una gota recién convertida en partícula sigue en su celda de origen,
   // esa celda queda reservada: aunque la grilla la vea vacía, si el agua de al lado
   // se corriera ahí la gota chocaría al instante contra ella y no llegaría nunca
   // al hueco que tiene debajo (se repetiría para siempre).
+  // Además, mientras dure la reserva la zona queda DESPIERTA: el agua de al lado no
+  // puede correrse a esa celda, y si su bloque se durmiera por "no tener movimiento"
+  // nadie lo despertaría cuando la gota se va (el agua quedaría trabada con aire al costado).
   for (const gota of particulasAgua) {
     const indiceActual = Math.floor(gota.y) * ANCHO_GRILLA + Math.floor(gota.x);
-    if (indiceActual === gota.celdaOrigen) pasoEnQueSeMovio[indiceActual] = pasoActual;
+    if (indiceActual === gota.celdaOrigen) {
+      pasoEnQueSeMovio[indiceActual] = pasoActual;
+      despertarCelda(indiceActual);
+    }
   }
 
-  // Recorrido de ABAJO hacia ARRIBA: ordena la masa, convierte en partículas el
-  // agua sin apoyo y mueve el magma.
+  // Recorrido de ABAJO hacia ARRIBA (solo bloques despiertos): ordena la masa,
+  // convierte en partículas el agua sin apoyo y mueve el magma.
   for (let y = ALTO_GRILLA - 1; y >= 0; y--) {
     const deIzquierdaADerecha = ((y + pasoActual) & 1) === 0; // alterna según fila y paso
-    for (let k = 0; k < ANCHO_GRILLA; k++) {
-      const x = deIzquierdaADerecha ? k : ANCHO_GRILLA - 1 - k;
-      const indice = y * ANCHO_GRILLA + x;
-      const tipo = material[indice];
-
-      if (tipo === AGUA) {
-        if (masaAgua[indice] <= 0) masaAgua[indice] = MASA_MAXIMA; // creada sin masa: llena
-        if (y < ALTO_GRILLA - 1 && material[indice + ANCHO_GRILLA] === AIRE) {
-          convertirEnParticula(x, y, indice, pasoActual);
-        } else {
-          contadorAgua++;
-          masaTotal += masaAgua[indice];
-        }
-      } else {
-        masaAgua[indice] = 0; // donde no hay agua no hay masa (otra parte pudo borrarla)
-        if (tipo === MAGMA && y < ALTO_GRILLA - 1 && pasoEnQueSeMovio[indice] !== pasoActual) {
-          actualizarMagma(x, y, indice, pasoActual);
-        }
+    const primerBloqueDeLaFila = Math.floor(y / TAMANIO_BLOQUE) * BLOQUES_X;
+    for (let k = 0; k < BLOQUES_X; k++) {
+      const bx = deIzquierdaADerecha ? k : BLOQUES_X - 1 - k;
+      if (!bloqueDespierto[primerBloqueDeLaFila + bx]) continue; // agua quieta: se saltea
+      const xInicio = bx * TAMANIO_BLOQUE;
+      const xFin = Math.min(ANCHO_GRILLA, xInicio + TAMANIO_BLOQUE);
+      for (let j = 0; j < xFin - xInicio; j++) {
+        const x = deIzquierdaADerecha ? xInicio + j : xFin - 1 - j;
+        actualizarCeldaDeFluido(x, y, y * ANCHO_GRILLA + x, pasoActual);
       }
     }
   }
@@ -81,14 +82,47 @@ function simularFluidos() {
   // La masa fluye varias veces por paso: más repeticiones = el agua se nivela más rápido
   for (let n = 0; n < PARAMETROS.subpasosAgua; n++) nivelarAgua(pasoActual);
 
-  celdasDeAguaEnGrilla = contadorAgua;
-  masaTotalDeAgua = masaTotal;
+  // Los bloques con actividad en este paso son los que se calculan en el próximo;
+  // el resto se duerme.
+  bloquesCalculados = 0;
+  for (let b = 0; b < bloqueDespierto.length; b++) bloquesCalculados += bloqueDespierto[b];
+  bloqueDespierto.set(bloqueDespiertoProximo);
+  bloqueDespiertoProximo.fill(0);
+
+  if (pasoActual % PASOS_ENTRE_CONTEOS === 0) contarAguaTotal();
+}
+
+function actualizarCeldaDeFluido(x, y, indice, pasoActual) {
+  const tipo = material[indice];
+  if (tipo === AGUA) {
+    if (masaAgua[indice] <= 0) masaAgua[indice] = MASA_MAXIMA; // creada sin masa: llena
+    if (y < ALTO_GRILLA - 1 && material[indice + ANCHO_GRILLA] === AIRE) {
+      convertirEnParticula(x, y, indice, pasoActual);
+    }
+  } else {
+    masaAgua[indice] = 0; // donde no hay agua no hay masa (otra parte pudo borrarla)
+    if (tipo === MAGMA && y < ALTO_GRILLA - 1 && pasoEnQueSeMovio[indice] !== pasoActual) {
+      actualizarMagma(x, y, indice, pasoActual);
+    }
+  }
+}
+
+/* Estadísticas del panel de debug. Como los bloques dormidos no se recorren,
+   el total se cuenta aparte recorriendo toda la grilla (solo cada medio segundo). */
+function contarAguaTotal() {
+  let celdas = 0, masa = 0;
+  for (let i = 0; i < TOTAL_CELDAS; i++) {
+    if (material[i] === AGUA) { celdas++; masa += masaAgua[i] || MASA_MAXIMA; }
+  }
+  celdasDeAguaEnGrilla = celdas;
+  masaTotalDeAgua = masa;
 }
 
 /* La celda de agua no tiene apoyo: toda su masa pasa a una gota en caída libre. */
 function convertirEnParticula(x, y, indice, pasoActual) {
   const masa = masaAgua[indice];
   celdasDeAguaActivas++;
+  despertarCelda(indice); // el agua de alrededor puede correrse al hueco que queda
   if (particulasAgua.length < MAXIMO_PARTICULAS_AGUA) {
     if (masa >= MASA_MINIMA) {
       particulasAgua.push({
@@ -98,7 +132,7 @@ function convertirEnParticula(x, y, indice, pasoActual) {
         masa,
         celdaOrigen: indice,                      // ver la reserva al inicio de simularFluidos
         grados: temperatura[indice],
-        jugadoresGolpeados: 0                     // máscara de bits: a quién ya mojó
+        llamasGolpeadas: 0                        // máscara de bits: a qué llamas ya mojó
       });
     }
     material[indice] = AIRE;
@@ -114,6 +148,7 @@ function convertirEnParticula(x, y, indice, pasoActual) {
     material[indice] = AIRE;
     masaAgua[indice] = 0;
     pasoEnQueSeMovio[indiceAbajo] = pasoActual;
+    despertarCelda(indiceAbajo);
   }
 }
 
@@ -139,15 +174,42 @@ function aceptaAgua(indice, pasoActual) {
    y arriba (en ese orden). Se lee de masaAgua y se acumula en masaAguaNueva.
    Un flujo hacia una celda de AIRE solo cuenta si es al menos MASA_MINIMA
    (si no, la celda nacería ya vacía y se perdería esa agua). */
+/* Límites (en celdas) de un bloque, agrandados "margen" celdas para cada lado. */
+function limitesDeBloque(bloque, margen) {
+  const bx = bloque % BLOQUES_X, by = (bloque - bx) / BLOQUES_X;
+  return {
+    x1: Math.max(0, bx * TAMANIO_BLOQUE - margen),
+    x2: Math.min(ANCHO_GRILLA, (bx + 1) * TAMANIO_BLOQUE + margen), // x2 e y2 no incluidos
+    y1: Math.max(0, by * TAMANIO_BLOQUE - margen),
+    y2: Math.min(ALTO_GRILLA, (by + 1) * TAMANIO_BLOQUE + margen)
+  };
+}
+
 function nivelarAgua(pasoActual) {
-  masaAguaNueva.set(masaAgua);
+  // Bloques a calcular en este subpaso (se toma la lista al empezar)
+  const bloques = [];
+  for (let b = 0; b < bloqueDespierto.length; b++) if (bloqueDespierto[b]) bloques.push(b);
+  if (bloques.length === 0) return;
+
+  // Copia de trabajo: solo los bloques despiertos más 1 celda de borde, que es
+  // hasta donde puede llegar un flujo (las vecinas de sus celdas).
+  for (const bloque of bloques) {
+    const { x1, x2, y1, y2 } = limitesDeBloque(bloque, 1);
+    for (let y = y1; y < y2; y++) {
+      const fila = y * ANCHO_GRILLA;
+      for (let x = x1; x < x2; x++) masaAguaNueva[fila + x] = masaAgua[fila + x];
+    }
+  }
+
   let flujosAplicados = 0;
   const celdasVaciandose = []; // celdas que quedaron con muy poca agua (ver más abajo)
 
-  for (let y = 0; y < ALTO_GRILLA; y++) {
-    for (let x = 0; x < ANCHO_GRILLA; x++) {
+  for (const bloque of bloques) {
+    const { x1, x2, y1, y2 } = limitesDeBloque(bloque, 0);
+    for (let y = y1; y < y2; y++) for (let x = x1; x < x2; x++) {
       const indice = y * ANCHO_GRILLA + x;
       if (material[indice] !== AGUA) continue;
+      const flujosAntes = flujosAplicados;
       let restante = masaAgua[indice];
       const masaAlEmpezar = restante;
 
@@ -195,6 +257,8 @@ function nivelarAgua(pasoActual) {
       }
 
       if (masaAguaNueva[indice] < MASA_MINIMA && masaAguaNueva[indice] < masaAlEmpezar) celdasVaciandose.push(indice);
+      // Si esta celda movió agua, su zona sigue despierta (incluye el bloque vecino si está en el borde)
+      if (flujosAplicados !== flujosAntes) despertarCelda(indice);
     }
   }
 
@@ -215,22 +279,32 @@ function nivelarAgua(pasoActual) {
     }
   }
 
-  // Aplicar: una celda con masa pasa a ser AGUA; con muy poca, se vacía
-  for (let indice = 0; indice < TOTAL_CELDAS; indice++) {
-    const masa = masaAguaNueva[indice];
-    const tipo = material[indice];
-    if (tipo === AGUA) {
-      if (masa < MASA_MINIMA) { material[indice] = AIRE; masaAgua[indice] = 0; }
-      else masaAgua[indice] = masa;
-    } else if (tipo === AIRE && masa >= MASA_MINIMA) {
-      material[indice] = AGUA;
-      masaAgua[indice] = masa;
+  // Aplicar (en la misma zona que se copió): una celda con masa pasa a ser AGUA;
+  // con muy poca, se vacía. Si dos zonas se superponen, aplicar dos veces da lo mismo.
+  for (const bloque of bloques) {
+    const { x1, x2, y1, y2 } = limitesDeBloque(bloque, 1);
+    for (let y = y1; y < y2; y++) {
+      for (let x = x1; x < x2; x++) {
+        const indice = y * ANCHO_GRILLA + x;
+        const masa = masaAguaNueva[indice];
+        const tipo = material[indice];
+        if (tipo === AGUA) {
+          if (masa < MASA_MINIMA) { material[indice] = AIRE; masaAgua[indice] = 0; }
+          else masaAgua[indice] = masa;
+        } else if (tipo === AIRE && masa >= MASA_MINIMA) {
+          material[indice] = AGUA;
+          masaAgua[indice] = masa;
+        }
+      }
     }
   }
   celdasDeAguaActivas += flujosAplicados;
 }
 
 function actualizarMagma(x, y, indice, pasoActual) {
+  // Mientras haya magma líquido, su zona queda despierta (puede moverse o tocar agua en cualquier paso)
+  despertarCelda(indice);
+
   // 1) Choque térmico: cada vecino de AGUA se evapora
   const vecinos = [
     x > 0 ? indice - 1 : -1,                  // izquierda
@@ -256,7 +330,7 @@ function actualizarMagma(x, y, indice, pasoActual) {
 
   // 2) Caer si hay aire abajo (y no hay un jugador ahí)
   const indiceAbajo = indice + ANCHO_GRILLA;
-  if (material[indiceAbajo] === AIRE && !ocupadaPorJugador[indiceAbajo]) {
+  if (material[indiceAbajo] === AIRE && !ocupadaPorLlama[indiceAbajo]) {
     intercambiarCeldas(indice, indiceAbajo);
     pasoEnQueSeMovio[indiceAbajo] = pasoActual;
     return;
@@ -268,7 +342,7 @@ function actualizarMagma(x, y, indice, pasoActual) {
     const xVecino = x + lado;
     if (xVecino >= 0 && xVecino < ANCHO_GRILLA) {
       const indiceVecino = indice + lado;
-      if (material[indiceVecino] === AIRE && !ocupadaPorJugador[indiceVecino]) {
+      if (material[indiceVecino] === AIRE && !ocupadaPorLlama[indiceVecino]) {
         intercambiarCeldas(indice, indiceVecino);
         pasoEnQueSeMovio[indiceVecino] = pasoActual;
       }

@@ -86,9 +86,11 @@ function actualizarEstadisticas(estadisticas) {
     `grilla      ${ANCHO_GRILLA}×${ALTO_GRILLA} (${TOTAL_CELDAS} celdas)\n` +
     `agua grilla ${celdasDeAguaEnGrilla}  masa ${masaTotalDeAgua.toFixed(0)}\n` +
     `flujos/paso ${celdasDeAguaActivas}\n` +
+    `bloques     ${bloquesCalculados}/${BLOQUES_X * BLOQUES_Y} despiertos\n` +
     `partículas  ${particulasAgua.length}  efectos ${efectos.length}\n` +
     `fase        ${juego.pantalla}/${juego.fase}\n` +
     `viento      ${viento.toFixed(2)}\n` +
+    `nivel lago  fila ${mapa.filaSuperiorLago}\n` +
     `semilla     ${mapa.semilla}`;
 }
 

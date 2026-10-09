@@ -4,7 +4,7 @@
 
    Cuando una gota de la grilla queda sin apoyo se convierte en partícula:
    tiene posición y velocidad propias, le afectan la gravedad y el viento, y
-   empuja/moja a los jugadores que toca. Al chocar con algo sólido (o con más
+   empuja/moja a las llamas que toca. Al chocar con algo sólido (o con más
    agua) vuelve a la grilla como una celda de AGUA.
 
    Integración (Euler semi-implícito), en cada paso:
@@ -24,12 +24,12 @@ function simularParticulasAgua(dt) {
   for (let n = particulasAgua.length - 1; n >= 0; n--) {
     const gota = particulasAgua[n];
     gota.velocidadY += PARAMETROS.gravedad * dt;
-    gota.velocidadX += aceleracionViento * dt;
+    if (!gota.deCascada) gota.velocidadX += aceleracionViento * dt; // las cascadas no las mueve el viento
     gota.velocidadX *= ROZAMIENTO_AIRE_AGUA;
     if (gota.velocidadY > VELOCIDAD_MAXIMA_CAIDA_AGUA) gota.velocidadY = VELOCIDAD_MAXIMA_CAIDA_AGUA;
 
     const sigueViva = moverGota(gota, dt);
-    if (sigueViva) mojarJugadores(gota);
+    if (sigueViva) mojarLlamas(gota);
     else {
       // Borrado rápido: se pisa con la última y se achica el arreglo
       particulasAgua[n] = particulasAgua[particulasAgua.length - 1];
@@ -63,6 +63,7 @@ function moverGota(gota, dt) {
       if (tipo === MAGMA) {
         // Agua sobre magma: se evapora y el magma se solidifica
         material[indice] = MAGMA_SOLIDO;
+        despertarCelda(indice);
         crearVapor(nuevaX, nuevaY, 3);
       } else {
         devolverAGrilla(gota);
@@ -80,6 +81,9 @@ function moverGota(gota, dt) {
    se volvió sólida, sube hasta encontrar aire o agua. No hay torres: el exceso
    de una celda lo reparte el flujo de masa (ver fluidos.js). */
 function devolverAGrilla(gota) {
+  if (repartirEnElLago(gota)) return; // si cayó al lago, se reparte parejo (ver cascadas.js)
+  // "Plip" de las gotas que caen con fuerza (las de la cascada ya tienen su sonido de ambiente)
+  if (!gota.deCascada && gota.velocidadY > 20) registrarChapoteo();
   const x = limitar(Math.floor(gota.x), 0, ANCHO_GRILLA - 1);
   for (let fila = Math.floor(gota.y); fila >= 0; fila--) {
     const indice = fila * ANCHO_GRILLA + x;
@@ -87,32 +91,35 @@ function devolverAGrilla(gota) {
       material[indice] = AGUA;
       masaAgua[indice] = gota.masa;
       temperatura[indice] = gota.grados;
+      despertarCelda(indice); // agua nueva en la grilla: tiene que nivelarse
       return;
     }
     if (material[indice] === AGUA) {
-      masaAgua[indice] += gota.masa;
+      masaAgua[indice] = (masaAgua[indice] || MASA_MAXIMA) + gota.masa; // masa 0 = celda llena
+      despertarCelda(indice);
       return;
     }
   }
 }
 
-/* Si la gota está dentro del hitbox de un jugador: le hace daño y lo empuja.
-   Cada gota daña una sola vez a cada jugador (se marca con un bit). */
-function mojarJugadores(gota) {
-  for (const jugador of jugadores) {
-    if (!jugador.vivo) continue;
-    const bitDelJugador = 1 << jugador.numero;
-    if (gota.jugadoresGolpeados & bitDelJugador) continue;
+/* Si la gota está dentro del hitbox de una llama: le hace daño y la empuja.
+   Cada gota daña una sola vez a cada llama: se marca con un bit por llama
+   (bit 0 = llama 0, bit 1 = llama 1...; alcanza para hasta 32 llamas). */
+function mojarLlamas(gota) {
+  for (const llama of llamas) {
+    if (!llama.vivo) continue;
+    const bitDeLaLlama = 1 << llama.numero;
+    if (gota.llamasGolpeadas & bitDeLaLlama) continue;
 
-    const adentro = gota.x >= jugador.x && gota.x <= jugador.x + jugador.ancho
-                 && gota.y >= jugador.y && gota.y <= jugador.y + jugador.alto;
+    const adentro = gota.x >= llama.x && gota.x <= llama.x + llama.ancho
+                 && gota.y >= llama.y && gota.y <= llama.y + llama.alto;
     if (!adentro) continue;
 
-    gota.jugadoresGolpeados |= bitDelJugador;
-    aplicarDanio(jugador, PARAMETROS.danioPorGota * gota.masa); // una gota con menos agua moja menos
-    // Transferencia de impulso: la gota empuja al jugador en su dirección
-    jugador.velocidadX += gota.velocidadX * 0.05;
-    jugador.velocidadY += gota.velocidadY * 0.02;
+    gota.llamasGolpeadas |= bitDeLaLlama;
+    aplicarDanio(llama, PARAMETROS.danioPorGota * gota.masa); // una gota con menos agua moja menos
+    // Transferencia de impulso: la gota empuja a la llama en su dirección
+    llama.velocidadX += gota.velocidadX * 0.05;
+    llama.velocidadY += gota.velocidadY * 0.02;
     gota.velocidadX *= 0.5;
     if (Math.random() < 0.3) crearVapor(gota.x, gota.y, 1);
   }

@@ -34,15 +34,19 @@
 <script src="js/temperatura.js"></script>     <!-- difusión de calor y cambios de estado -->
 <script src="js/fluidos.js"></script>         <!-- autómata celular: agua y magma -->
 <script src="js/particulas-agua.js"></script> <!-- agua en caída libre (Lagrangiano) -->
+<script src="js/cascadas.js"></script>        <!-- cascadas laterales que llenan el lago (muerte súbita) -->
 <script src="js/efectos.js"></script>         <!-- vapor, chispas, humo (solo visual) -->
-<script src="js/jugador.js"></script>         <!-- elementales: movimiento, daño, curación -->
+<script src="js/viento.js"></script>          <!-- estelas que muestran el viento (solo visual) -->
+<script src="js/llama.js"></script>           <!-- llamas (elementales): movimiento, daño, curación -->
 <script src="js/proyectiles.js"></script>     <!-- bola de fuego, magma y explosiones -->
 <script src="js/turnos.js"></script>          <!-- flujo de la partida -->
-<script src="js/entrada.js"></script>         <!-- teclado -->
+<script src="js/joystick.js"></script>        <!-- joysticks (Gamepad API) -->
+<script src="js/entrada.js"></script>         <!-- teclado y unión con los joysticks -->
 <script src="js/dibujo-personajes.js"></script> <!-- llama y fósforo dibujados por código -->
 <script src="js/render.js"></script>          <!-- dibujo del mundo -->
 <script src="js/hud.js"></script>             <!-- interfaz: vida, tiempo, viento, armas -->
 <script src="js/debug.js"></script>           <!-- panel de debug y sliders -->
+<script src="js/sonido.js"></script>          <!-- efectos de sonido sintetizados (Web Audio API) -->
 <script src="js/principal.js"></script>       <!-- bucle principal del juego -->
 </body>
 </html>

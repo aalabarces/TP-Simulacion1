@@ -18,6 +18,7 @@ function hayLugarParaEfectos() {
 
 /* Vapor blanco que sube (choque térmico agua/fuego) */
 function crearVapor(x, y, cantidad) {
+  registrarVapor(cantidad); // siseo (se acumula y suena una vez por cuadro, ver sonido.js)
   for (let n = 0; n < cantidad && hayLugarParaEfectos(); n++) {
     efectos.push({
       tipo: EFECTO_VAPOR, x, y,
