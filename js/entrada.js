@@ -36,8 +36,17 @@ const CUALQUIER_JUGADOR = -1; // en los modos por turnos, cualquier control muev
 
 const teclasApretadas = new Set();
 
+/* Teclas que se ignoran hasta que se suelten. Al empezar la partida con Enter,
+   esa misma tecla (que también es la de disparar de J2) sigue apretada: sin
+   esto, el juego la tomaría como carga y dispararía al soltarla. */
+const teclasIgnoradasHastaSoltar = new Set();
+
+function ignorarTeclasApretadas() {
+  for (const codigo of teclasApretadas) teclasIgnoradasHastaSoltar.add(codigo);
+}
+
 function teclaApretada(codigo) {
-  return teclasApretadas.has(codigo);
+  return teclasApretadas.has(codigo) && !teclasIgnoradasHastaSoltar.has(codigo);
 }
 
 function algunaApretada(codigos) {
@@ -80,7 +89,11 @@ function llamaQueManeja(jugador) {
 function ejecutarAccion(accion, jugador) {
   switch (accion) {
     case 'aceptar':
-      if (juego.pantalla !== 'jugando') empezarPartida(); // en "fin" es la revancha con el mismo modo
+      if (juego.pantalla !== 'jugando') {
+        empezarPartida(); // en "fin" es la revancha con el mismo modo
+        ignorarTeclasApretadas();   // el Enter que empezó la partida no cuenta como disparo
+        ignorarBotonesApretados();  // ni el A / Start del joystick como salto
+      }
       break;
     case 'menu':
       if (juego.pantalla === 'fin') juego.pantalla = 'titulo';
@@ -152,7 +165,13 @@ window.addEventListener('keydown', evento => {
   }
 });
 
-window.addEventListener('keyup', evento => teclasApretadas.delete(evento.code));
+window.addEventListener('keyup', evento => {
+  teclasApretadas.delete(evento.code);
+  teclasIgnoradasHastaSoltar.delete(evento.code);
+});
 
 // Si la ventana pierde el foco, se "sueltan" todas las teclas
-window.addEventListener('blur', () => teclasApretadas.clear());
+window.addEventListener('blur', () => {
+  teclasApretadas.clear();
+  teclasIgnoradasHastaSoltar.clear();
+});

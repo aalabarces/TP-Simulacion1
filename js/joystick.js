@@ -41,9 +41,36 @@ function aplicarZonaMuerta(valor) {
   return Math.sign(valor) * (Math.abs(valor) - ZONA_MUERTA) / (1 - ZONA_MUERTA);
 }
 
-function botonApretado(joystick, indice) {
+/* Botones que se ignoran hasta soltarlos, por joystick (ver ignorarBotonesApretados). */
+let botonesIgnoradosHastaSoltar = [];
+
+function botonApretadoFisico(joystick, indice) {
   const boton = joystick.buttons[indice];
   return !!boton && (boton.pressed || boton.value > UMBRAL_GATILLO);
+}
+
+function botonApretado(joystick, indice) {
+  const ignorados = botonesIgnoradosHastaSoltar[joystick.index];
+  return botonApretadoFisico(joystick, indice) && !(ignorados && ignorados.has(indice));
+}
+
+/* Al empezar la partida con A o Start, ese botón sigue apretado: se ignora
+   hasta soltarlo (si no, A haría saltar a la llama apenas arranca). */
+function ignorarBotonesApretados() {
+  if (!navigator.getGamepads) return;
+  for (const joystick of Array.from(navigator.getGamepads())) {
+    if (!joystick) continue;
+    const apretados = new Set();
+    joystick.buttons.forEach((_, i) => { if (botonApretadoFisico(joystick, i)) apretados.add(i); });
+    botonesIgnoradosHastaSoltar[joystick.index] = apretados;
+  }
+}
+
+/* Saca de la lista de ignorados los botones que ya se soltaron. */
+function liberarBotonesSoltados(joystick) {
+  const ignorados = botonesIgnoradosHastaSoltar[joystick.index];
+  if (!ignorados) return;
+  for (const i of [...ignorados]) if (!botonApretadoFisico(joystick, i)) ignorados.delete(i);
 }
 
 /* Se llama una vez por cuadro (principal.js): lee todos los joysticks y
@@ -53,6 +80,7 @@ function actualizarJoysticks() {
   const conectados = Array.from(navigator.getGamepads()).filter(j => j && j.connected);
 
   estadoJoysticks = conectados.map((joystick, numero) => {
+    liberarBotonesSoltados(joystick);
     const cruz = (botonApretado(joystick, BOTON.DERECHA) ? 1 : 0) - (botonApretado(joystick, BOTON.IZQUIERDA) ? 1 : 0);
     const cruzVertical = (botonApretado(joystick, BOTON.ARRIBA) ? 1 : 0) - (botonApretado(joystick, BOTON.ABAJO) ? 1 : 0);
     const estado = {
