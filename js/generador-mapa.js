@@ -348,7 +348,10 @@ function pintarPuente(inicio, fin, esCentral, aleatorioEntre, enteroEntre, aleat
     return interpolar(inicio.y, fin.y, t) - elevacion * (1 - Math.abs(2 * t - 1));
   };
 
-  for (let x = Math.ceil(inicio.x); x <= ultimaColumna; x++) {
+  // 1) Fila de la superficie de cada columna del puente
+  const primeraColumna = Math.ceil(inicio.x);
+  const superficies = [];
+  for (let x = primeraColumna; x <= ultimaColumna; x++) {
     const pozo = pozos.find(p => Math.abs(x - p.centroX) < p.medioAncho);
     let alturaSuperficie;
     if (pozo) {
@@ -362,10 +365,20 @@ function pintarPuente(inicio, fin, esCentral, aleatorioEntre, enteroEntre, aleat
     } else {
       alturaSuperficie = alturaRampa(x);
     }
-    const filaSuperficie = Math.round(alturaSuperficie);
-    // El hielo sigue la forma del pozo: el fondo del puente baja junto con la superficie
-    for (let y = filaSuperficie; y < filaSuperficie + GROSOR_PUENTE; y++) pintarHieloSiEsAire(x, y);
+    superficies.push(Math.round(alturaSuperficie));
   }
+
+  // 2) Pintar cada columna: GROSOR_PUENTE celdas de hielo desde su superficie y,
+  // si una vecina tiene la superficie más abajo, se estira hasta tocarla. Sin esto,
+  // en un escalón de GROSOR_PUENTE filas o más (el borde alto de un pozo en una
+  // rampa empinada) las dos columnas quedarían una sobre otra sin tocarse: el
+  // puente se cortaría y el pozo perdería agua por el hueco.
+  superficies.forEach((filaSuperficie, n) => {
+    const izquierda = n > 0 ? superficies[n - 1] : filaSuperficie;
+    const derecha = n < superficies.length - 1 ? superficies[n + 1] : filaSuperficie;
+    const ultimaFila = Math.max(filaSuperficie + GROSOR_PUENTE - 1, izquierda, derecha);
+    for (let y = filaSuperficie; y <= ultimaFila; y++) pintarHieloSiEsAire(primeraColumna + n, y);
+  });
 }
 
 /* Cada pozo es un cuenco: profundidad × (1 - (distancia / medioAncho)²).
