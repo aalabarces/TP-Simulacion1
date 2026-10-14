@@ -242,6 +242,7 @@ function dibujarSelectoresDeArmas(anchoPantalla, altoPantalla, unidad) {
   if (!llama) return;
   const x = anchoPantalla / 2 - anchoSelector / 2;
   dibujarSelectorDeArmas(llama, x, y, altoBoton, unidad);
+  if (esDispositivoTactil) return; // la ayuda de teclas no aplica en el celular
   // Ayuda de controles sobre los botones
   ctx.textAlign = 'center';
   ctx.fillStyle = 'rgba(200,215,235,0.55)';
@@ -273,6 +274,10 @@ function dibujarSelectorDeArmas(llama, xInicial, y, altoBoton, unidad) {
   ARMAS_DEL_SELECTOR.forEach((arma, numeroArma) => {
     const elegida = llama.arma === numeroArma;
     const anchoBoton = (elegida ? ANCHO_BOTON_ELEGIDO : ANCHO_BOTON_CHICO) * unidad;
+    // En el celular, tocar el ícono elige el arma (con las mismas reglas que Q / .)
+    registrarZonaTocable(x, y, anchoBoton, altoBoton, () => {
+      if (puedeCambiarDeArma(llama) && llama.arma !== numeroArma) { llama.arma = numeroArma; sonarCambioDeLlama(); }
+    });
     dibujarPanel(x, y, anchoBoton, altoBoton);
     if (elegida) {
       trazarRectanguloRedondeado(ctx, x, y, anchoBoton, altoBoton, altoBoton * 0.18);
@@ -371,6 +376,13 @@ function dibujarCartel(anchoPantalla, altoPantalla, unidad) {
 }
 
 /* ---------- Pantalla de título y de fin de partida ---------- */
+const AYUDA_TITULO_TACTIL = [
+  '◀ ▶ mover · ⤒ saltar · ▲ ▼ ángulo · 🔥 mantener para cargar, soltar para disparar',
+  'Tocá un arma abajo para elegirla · ⇄ cambia de llama (Worms)',
+  'Arrastrá con un dedo para mover la cámara · pellizcá para el zoom',
+  'Si el agua te cubre por completo, te apagás. Pararte sobre magma caliente te cura.'
+];
+
 function dibujarPantallaSuperpuesta(anchoPantalla, altoPantalla, unidad) {
   ctx.fillStyle = 'rgba(3,6,14,0.62)';
   ctx.fillRect(0, 0, anchoPantalla, altoPantalla);
@@ -389,7 +401,7 @@ function dibujarPantallaSuperpuesta(anchoPantalla, altoPantalla, unidad) {
     ctx.font = fuente(unidad, 1.6);
     ctx.fillText('Dos elementales de fuego. Una caverna helada. Usá el agua para apagar a tu rival.', anchoPantalla / 2, altoPantalla * 0.34 + 4 * unidad);
     dibujarSelectorDeModo(anchoPantalla, altoPantalla * 0.43, unidad);
-    const lineasAyuda = [
+    const lineasAyuda = esDispositivoTactil ? AYUDA_TITULO_TACTIL : [
       'J1: A/D mover · Espacio saltar · W/S apuntar · F disparar (mantener) · Q arma',
       'J2: ←/→ mover · Shift der. saltar · ↑/↓ apuntar · Enter disparar (mantener) · . arma',
       '🎮 Joystick: stick mover · A saltar · stick der. apuntar · RT disparar · LB/RB arma · Y llama',
@@ -409,6 +421,9 @@ function dibujarPantallaSuperpuesta(anchoPantalla, altoPantalla, unidad) {
     ctx.fillText(`Modo ${MODOS_DE_JUEGO[juego.modo].nombre}`, anchoPantalla / 2, altoPantalla * 0.42 + 3.5 * unidad);
   }
 
+  // En el celular, Empezar / Revancha / Menú son botones (index.html)
+  if (esDispositivoTactil) return;
+
   // Texto que "respira": la opacidad oscila entre 0.1 y 1 con un seno
   const opacidad = 0.55 + 0.45 * Math.sin(tiempoTotal * 4);
   ctx.fillStyle = `rgba(255,255,255,${opacidad})`;
@@ -417,16 +432,19 @@ function dibujarPantallaSuperpuesta(anchoPantalla, altoPantalla, unidad) {
   ctx.fillText(juego.pantalla === 'titulo' ? 'ENTER o START para empezar' : 'ENTER / START revancha   ·   M / BACK menú', anchoPantalla / 2, altoPantalla * 0.88);
 }
 
-/* Dos tarjetas (una por modo); la elegida se resalta. Se cambia con ←/→ o 1/2. */
+/* Una tarjeta por modo disponible; la elegida se resalta. Se cambia con ←/→,
+   1/2/3 o tocándola (en el celular). */
 function dibujarSelectorDeModo(anchoPantalla, y, unidad) {
+  const modos = modosDisponibles();
   const anchoTarjeta = 20 * unidad, altoTarjeta = 6 * unidad, separacion = 1.5 * unidad;
-  const anchoTotal = ORDEN_DE_MODOS.length * anchoTarjeta + (ORDEN_DE_MODOS.length - 1) * separacion;
+  const anchoTotal = modos.length * anchoTarjeta + (modos.length - 1) * separacion;
   const xInicial = anchoPantalla / 2 - anchoTotal / 2;
 
-  ORDEN_DE_MODOS.forEach((clave, n) => {
+  modos.forEach((clave, n) => {
     const modo = MODOS_DE_JUEGO[clave];
     const elegido = clave === juego.modo;
     const x = xInicial + n * (anchoTarjeta + separacion);
+    registrarZonaTocable(x, y, anchoTarjeta, altoTarjeta, () => elegirModoPorNumero(n));
     dibujarPanel(x, y, anchoTarjeta, altoTarjeta);
     if (elegido) {
       trazarRectanguloRedondeado(ctx, x, y, anchoTarjeta, altoTarjeta, altoTarjeta * 0.18);
@@ -445,5 +463,6 @@ function dibujarSelectorDeModo(anchoPantalla, y, unidad) {
 
   ctx.fillStyle = '#9fb2cc';
   ctx.font = fuente(unidad, 1.2);
-  ctx.fillText('← / →  o la cruz del joystick: elegir modo', anchoPantalla / 2, y + altoTarjeta + 2 * unidad);
+  const ayuda = esDispositivoTactil ? 'Tocá un modo para elegirlo' : '← / →  o la cruz del joystick: elegir modo';
+  ctx.fillText(ayuda, anchoPantalla / 2, y + altoTarjeta + 2 * unidad);
 }

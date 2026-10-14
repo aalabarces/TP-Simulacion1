@@ -19,8 +19,8 @@
    Ojo: muchos teclados no registran más de 3 o 4 teclas a la vez ("ghosting");
    para Tiempo real conviene usar joysticks.
 
-   Cámara (ver camara.js): I J K L mover · - / = zoom · C recentrar · rueda del
-   mouse zoom · arrastrar con el mouse mover.
+   Cámara (ver camara.js): I J K L mover · - / = zoom · C recentrar.
+   (el juego no usa el mouse)
 
    Otras teclas: Tab cambiar de llama (Worms) · P debug · N sonido ·
    8 vista de temperatura · 9 vista de grilla · 0 nuevo mapa · M menú (al terminar).
@@ -78,6 +78,14 @@ function leerControles(jugador) {
     apuntar += joystick.apuntar;
     saltar = saltar || joystick.saltar;
     cargar = cargar || joystick.cargar;
+  }
+  // Botones táctiles (celular): solo en los modos por turnos (ver controles-tactiles.js)
+  if (jugador === CUALQUIER_JUGADOR) {
+    const t = botonesTactiles;
+    mover += (t.derecha ? 1 : 0) - (t.izquierda ? 1 : 0);
+    apuntar += (t.arriba ? 1 : 0) - (t.abajo ? 1 : 0);
+    saltar = saltar || t.saltar;
+    cargar = cargar || t.cargar;
   }
   return { mover: limitar(mover, -1, 1), apuntar: limitar(apuntar, -1, 1), saltar, cargar };
 }
@@ -166,7 +174,7 @@ window.addEventListener('keydown', evento => {
     if (evento.code === 'ArrowLeft' || evento.code === 'KeyA') ejecutarAccion('modoAnterior', jugador);
     if (evento.code === 'ArrowRight' || evento.code === 'KeyD') ejecutarAccion('modoSiguiente', jugador);
     const numero = ['Digit1', 'Digit2', 'Digit3'].indexOf(evento.code);
-    if (numero >= 0 && numero < ORDEN_DE_MODOS.length) elegirModoPorNumero(numero);
+    if (numero >= 0 && numero < modosDisponibles().length) elegirModoPorNumero(numero);
   }
 });
 

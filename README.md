@@ -49,8 +49,9 @@ js/
   turnos.js             modos de juego, pantallas, turnos por equipo
   joystick.js           joysticks (Gamepad API)
   entrada.js            teclado (un esquema por jugador) y unión con los joysticks
+  controles-tactiles.js botones en pantalla y gestos para jugar desde el celular
   dibujo-personajes.js  llama y fósforo dibujados por código
-  camara.js             cámara: zoom, desplazamiento (mouse/teclado/joystick) y seguimiento
+  camara.js             cámara: zoom, desplazamiento (teclado/joystick) y seguimiento
   render.js             dibujo del terreno y del mundo (solo lo que ve la cámara)
   hud.js                interfaz: vida, temporizador, viento, armas
   debug.js              panel de debug y sliders
@@ -79,6 +80,26 @@ anterior. El agua en reposo (lago, burbujas, pozos llenos) no consume
 procesamiento, como plantea el GDD. Cualquier cambio (explosión, derretir,
 gota que aterriza) despierta su zona. Con la vista de grilla (G) los bloques
 despiertos se ven en amarillo.
+
+## Celular
+
+En pantallas táctiles aparecen botones sobre el juego (solo modos por turnos,
+con el teléfono horizontal):
+
+| Botón / gesto | Acción |
+|---|---|
+| ◀ ▶ | Mover |
+| ⤒ | Saltar |
+| ▲ ▼ | Ángulo |
+| 🔥 (mantener y soltar) | Cargar y disparar |
+| Tocar un arma del selector | Elegir arma |
+| ⇄ | Cambiar de llama (Worms) |
+| Arrastrar un dedo / pellizcar | Mover la cámara / zoom |
+| ⛶ | Pantalla completa |
+
+En el celular no se puede abrir el HTML con doble clic: hay que publicarlo, por
+ejemplo con **GitHub Pages** (Settings → Pages del repo, rama `master`, carpeta raíz).
+Para probar los controles táctiles en la PC: abrir `index.html?tactil=1`.
 
 ## Controles
 
@@ -149,11 +170,11 @@ del turno, al proyectil y al lugar del impacto; en Tiempo real encuadra a las
 dos llamas. También se maneja a mano y vuelve sola al empezar el turno, al
 disparar, con **C** o tras 6 s sin tocarla.
 
-| Acción | Mouse | Teclado | Joystick |
-|---|---|---|---|
-| Mover | arrastrar | I J K L | mantener LT + stick derecho |
-| Zoom | rueda | − / = | mantener LT + cruz ↑ ↓ |
-| Recentrar | | C | |
+| Acción | Teclado | Joystick |
+|---|---|---|
+| Mover | I J K L | mantener LT + stick derecho |
+| Zoom | − / = | mantener LT + cruz ↑ ↓ |
+| Recentrar | C | |
 
 | Otras teclas | Acción |
 |---|---|

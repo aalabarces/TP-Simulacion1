@@ -217,16 +217,20 @@ function sortearLadosDeCadaPar(cantidadDePares) {
   return invertidos;
 }
 
-/* Pantalla de título: elegir modo con ←/→, la cruz del joystick o 1/2/3.
-   El mapa de fondo se regenera para mostrar las plataformas de ese modo. */
+/* Pantalla de título: elegir modo con ←/→, la cruz del joystick, 1/2/3 o
+   tocando la tarjeta. Solo entre los modos disponibles (en el celular no está
+   Tiempo real, ver controles-tactiles.js). El mapa de fondo se regenera para
+   mostrar las plataformas de ese modo. */
 function elegirModo(desplazamiento) {
-  const posicion = ORDEN_DE_MODOS.indexOf(juego.modo);
-  elegirModoPorNumero((posicion + desplazamiento + ORDEN_DE_MODOS.length) % ORDEN_DE_MODOS.length);
+  const modos = modosDisponibles();
+  const posicion = modos.indexOf(juego.modo);
+  elegirModoPorNumero((posicion + desplazamiento + modos.length) % modos.length);
 }
 
 function elegirModoPorNumero(numero) {
-  if (ORDEN_DE_MODOS[numero] === juego.modo) return;
-  juego.modo = ORDEN_DE_MODOS[numero];
+  const modos = modosDisponibles();
+  if (modos[numero] === juego.modo) return;
+  juego.modo = modos[numero];
   prepararMundo();
 }
 

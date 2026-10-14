@@ -11,6 +11,30 @@
 <!-- Lienzo donde se dibuja todo el juego -->
 <canvas id="lienzo"></canvas>
 
+<!-- Controles táctiles: solo se ven en celulares y tablets (ver controles-tactiles.js).
+     data-mantener = se mantiene apretado · data-accion = un solo toque -->
+<div id="controles-tactiles">
+  <div class="grupo-tactil izquierda">
+    <button data-mantener="izquierda" aria-label="Mover a la izquierda">◀</button>
+    <button data-mantener="derecha" aria-label="Mover a la derecha">▶</button>
+    <button data-mantener="saltar" class="saltar" aria-label="Saltar">⤒</button>
+  </div>
+  <div class="grupo-tactil derecha">
+    <button data-accion="cambiarLlama" class="cambiar-llama" aria-label="Cambiar de llama">⇄</button>
+    <div class="columna-angulo">
+      <button data-mantener="arriba" aria-label="Subir el ángulo">▲</button>
+      <button data-mantener="abajo" aria-label="Bajar el ángulo">▼</button>
+    </div>
+    <button data-mantener="cargar" class="disparar" aria-label="Disparar (mantener para cargar)">🔥</button>
+  </div>
+</div>
+<div id="botones-menu">
+  <button data-accion="aceptar" class="principal">Empezar</button>
+  <button data-accion="menu" class="secundario">Menú</button>
+</div>
+<button id="boton-pantalla-completa" aria-label="Pantalla completa">⛶</button>
+<div id="aviso-girar">📱↻<br>Girá el teléfono para jugar</div>
+
 <!-- Panel de debug (se abre/cierra con la tecla P) -->
 <div id="panel-debug" class="oculto">
   <h3>Debug · Fire Splash (P)</h3>
@@ -42,6 +66,7 @@
 <script src="js/turnos.js"></script>          <!-- flujo de la partida -->
 <script src="js/joystick.js"></script>        <!-- joysticks (Gamepad API) -->
 <script src="js/entrada.js"></script>         <!-- teclado y unión con los joysticks -->
+<script src="js/controles-tactiles.js"></script> <!-- botones en pantalla para celular -->
 <script src="js/dibujo-personajes.js"></script> <!-- llama y fósforo dibujados por código -->
 <script src="js/render.js"></script>          <!-- dibujo del mundo -->
 <script src="js/camara.js"></script>        <!-- cámara: zoom, desplazamiento, seguimiento -->

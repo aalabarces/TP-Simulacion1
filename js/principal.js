@@ -67,6 +67,7 @@ function cuadro(instante) {
 
   leerCamaraManual(transcurrido);
   actualizarCamara(transcurrido);
+  actualizarControlesTactiles(); // botones visibles según la pantalla (ver controles-tactiles.js)
   dibujarCuadro();
   actualizarSonidos(); // carga, ambientes y sonidos acumulados del cuadro (ver sonido.js)
   const finDibujo = performance.now();
@@ -85,5 +86,6 @@ function cuadro(instante) {
 }
 
 // Arranque: se genera un mundo de fondo para la pantalla de título
+prepararControlesTactiles(); // en el celular: botones en pantalla y solo los modos por turnos
 prepararMundo();
 requestAnimationFrame(cuadro);

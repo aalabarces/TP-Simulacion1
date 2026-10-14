@@ -13,16 +13,16 @@
                      mientras el agua se asienta, al lugar del impacto;
                    - tiempo real: encuadra a las dos llamas (zoom dinámico);
                    - título y fin de partida: muestra la arena (las plataformas).
-     LIBRE       El jugador la maneja a mano (mouse, teclado o joystick). Vuelve al
-                 automático al empezar el turno, al disparar, con C o tras unos
-                 segundos sin tocarla.
+     LIBRE       El jugador la maneja a mano (teclado o joystick; el juego no usa
+                 el mouse). Vuelve al automático al empezar el turno, al disparar,
+                 con C o tras unos segundos sin tocarla.
 
-   El zoom que elige el jugador (rueda, teclas, joystick) queda guardado en
+   El zoom que elige el jugador (teclas o joystick) queda guardado en
    "vistaPreferida" y lo usa el modo automático de los turnos.
    ============================================================================= */
 
-const VISTA_ANCHO_MINIMA = 50;        // zoom máximo: 50 celdas a lo ancho
-const VISTA_ANCHO_INICIAL = 200;      // zoom con el que arranca una partida
+const VISTA_ANCHO_MINIMA = 110;       // zoom máximo: 110 celdas a lo ancho (más cerca se pierde el contexto)
+const VISTA_ANCHO_INICIAL = 290;      // zoom con el que arranca una partida: casi todo el ancho del mundo (320)
 const VISTA_TIEMPO_REAL_MINIMA = 140; // en tiempo real nunca se acerca más que esto
 const TIEMPO_LIBRE_SIN_TOCAR = 6;     // segundos hasta que la cámara libre vuelve sola
 const SUAVIZADO_CAMARA = 5;           // más alto = la cámara sigue más rápido
@@ -116,23 +116,10 @@ function moverCamara(desplazamientoX, desplazamientoY) {
   camara.objetivoX = l.x; camara.objetivoY = l.y;
 }
 
-/* Zoom multiplicando la vista: factor < 1 = acercar. Si se pasa un punto de la
-   pantalla (el mouse), ese punto del mundo se queda quieto bajo el cursor. */
-function zoomCamara(factor, pixelX, pixelY) {
+/* Zoom multiplicando la vista (factor < 1 = acercar), centrado en la vista actual. */
+function zoomCamara(factor) {
   tomarControlDeLaCamara();
-  const g = camara.geometria;
-  const vistaVieja = camara.objetivoVista;
-  const l0 = limitarCamara(vistaVieja * factor, camara.objetivoX, camara.objetivoY);
-  let x = l0.x, y = l0.y;
-  if (pixelX !== undefined) {
-    // Celda bajo el cursor antes del zoom y su posición en pantalla después
-    const escalaVieja = g.ancho / vistaVieja, escalaNueva = g.ancho / l0.vista;
-    const celdaX = camara.objetivoX + (pixelX - g.ancho / 2) / escalaVieja;
-    const celdaY = camara.objetivoY + (pixelY - g.franjaHud - g.altoVista / 2) / escalaVieja;
-    x = celdaX - (pixelX - g.ancho / 2) / escalaNueva;
-    y = celdaY - (pixelY - g.franjaHud - g.altoVista / 2) / escalaNueva;
-  }
-  const l = limitarCamara(l0.vista, x, y);
+  const l = limitarCamara(camara.objetivoVista * factor, camara.objetivoX, camara.objetivoY);
   camara.objetivoVista = l.vista; camara.objetivoX = l.x; camara.objetivoY = l.y;
   camara.vistaPreferida = l.vista;
 }
@@ -214,41 +201,6 @@ function actualizarCamara(dt) {
   const l = limitarCamara(camara.vistaAncho, camara.x, camara.y);
   camara.vistaAncho = l.vista; camara.x = l.x; camara.y = l.y;
 }
-
-/* ---------- Mouse ---------- */
-
-let arrastrandoCamara = false;
-
-function posicionEnLienzo(evento) {
-  const caja = lienzo.getBoundingClientRect();
-  return {
-    x: (evento.clientX - caja.left) * lienzo.width / caja.width,
-    y: (evento.clientY - caja.top) * lienzo.height / caja.height
-  };
-}
-
-lienzo.addEventListener('wheel', evento => {
-  evento.preventDefault();
-  const punto = posicionEnLienzo(evento);
-  // Cada "clic" de rueda cambia el zoom un 15%
-  zoomCamara(Math.pow(1.15, Math.sign(evento.deltaY)), punto.x, punto.y);
-}, { passive: false });
-
-lienzo.addEventListener('mousedown', evento => {
-  if (evento.button !== 0 && evento.button !== 1 && evento.button !== 2) return;
-  arrastrandoCamara = true;
-  evento.preventDefault();
-});
-lienzo.addEventListener('contextmenu', evento => evento.preventDefault());
-window.addEventListener('mouseup', () => { arrastrandoCamara = false; });
-window.addEventListener('mousemove', evento => {
-  if (!arrastrandoCamara) return;
-  // movementX está en píxeles CSS: se pasa a píxeles del lienzo y de ahí a celdas
-  const caja = lienzo.getBoundingClientRect();
-  const aPixelesLienzo = lienzo.width / caja.width;
-  const escala = pixelesPorCelda();
-  moverCamara(-evento.movementX * aPixelesLienzo / escala, -evento.movementY * aPixelesLienzo / escala);
-});
 
 /* ---------- Teclado (I J K L mueven, - = zoom, C recentra) ---------- */
 

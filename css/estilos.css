@@ -77,6 +77,83 @@ html, body {
 
 #panel-debug .casilla { display: flex; align-items: center; gap: 6px; margin: 2px 0; }
 
+/* ===== Controles táctiles (celular) =====
+   Ocultos por defecto; controles-tactiles.js pone la clase "tactil" en el <body>
+   y los atributos data-pantalla y data-varias-llamas para mostrar lo que corresponde. */
+#controles-tactiles, #botones-menu, #boton-pantalla-completa, #aviso-girar { display: none; }
+
+body.tactil { touch-action: none; -webkit-user-select: none; user-select: none; }
+body.tactil[data-pantalla="jugando"] #controles-tactiles { display: block; }
+body.tactil:not([data-pantalla="jugando"]) #botones-menu { display: flex; }
+body.tactil #boton-pantalla-completa { display: block; }
+
+#controles-tactiles button, #botones-menu button, #boton-pantalla-completa {
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  border: 2px solid rgba(255, 255, 255, .22);
+  background: rgba(10, 16, 30, .45);
+  color: #fff;
+  font: 700 26px system-ui, sans-serif;
+  border-radius: 50%;
+  padding: 0;
+}
+#controles-tactiles button.apretado { background: rgba(255, 140, 40, .55); border-color: #ffb36b; }
+
+.grupo-tactil {
+  position: fixed;
+  bottom: max(14px, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+.grupo-tactil.izquierda { left: max(14px, env(safe-area-inset-left)); }
+.grupo-tactil.derecha { right: max(14px, env(safe-area-inset-right)); }
+.grupo-tactil button { width: 62px; height: 62px; }
+.grupo-tactil .saltar { margin-left: 6px; margin-bottom: 30px; }
+.columna-angulo { display: flex; flex-direction: column; gap: 8px; }
+.columna-angulo button { width: 52px; height: 52px; font-size: 20px; }
+.grupo-tactil .disparar { width: 84px; height: 84px; font-size: 34px; border-color: rgba(255, 150, 60, .6); }
+.grupo-tactil .cambiar-llama { width: 48px; height: 48px; font-size: 20px; display: none; }
+body[data-varias-llamas="si"] .grupo-tactil .cambiar-llama { display: block; }
+
+#botones-menu {
+  position: fixed;
+  left: 50%;
+  bottom: 6vh;
+  transform: translateX(-50%);
+  gap: 14px;
+}
+#botones-menu button { border-radius: 12px; padding: 12px 34px; font-size: 22px; }
+#botones-menu .principal { background: #b5451b; border-color: #ff9a5c; }
+body[data-pantalla="titulo"] #botones-menu .secundario { display: none; }
+body[data-pantalla="fin"] #botones-menu .principal::after { content: " de nuevo"; }
+
+#boton-pantalla-completa {
+  position: fixed;
+  top: 50%;
+  right: max(8px, env(safe-area-inset-right));
+  width: 40px; height: 40px;
+  font-size: 18px;
+  border-radius: 8px;
+}
+
+/* Con el celular vertical se pide girarlo (el juego es horizontal) */
+#aviso-girar {
+  position: fixed; top: 0; left: 0;
+  width: 100%; height: 100%;
+  box-sizing: border-box;
+  z-index: 10;
+  background: #05070c;
+  color: #ffd38a;
+  font: 700 20px system-ui, sans-serif;
+  text-align: center;
+  line-height: 1.6;
+  padding: 38vh 24px 0;
+}
+@media (orientation: portrait) {
+  body.tactil #aviso-girar { display: block; }
+}
+
 /* Cuadraditos de color de la leyenda de materiales */
 .leyenda span {
   display: inline-block;
