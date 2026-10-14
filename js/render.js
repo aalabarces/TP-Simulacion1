@@ -442,7 +442,7 @@ function dibujarMira(llama) {
 
 /* Lengua de fuego enganchada: una cuerda de llama que ondula entre la mano de la
    llama y el ancla (floja si está floja, derecha si está tensa), más un brillo en el
-   ancla que crece a medida que se derrite o se le acaba el tiempo. */
+   ancla: en hielo crece a medida que se derrite; en piedra y roca queda fijo. */
 function dibujarLengua(llama) {
   const ancla = llama.ancla;
   const mano = manoDeLaLlama(llama);
@@ -477,11 +477,11 @@ function dibujarLengua(llama) {
   ctx.strokeStyle = '#ff9a2e'; ctx.lineWidth = 0.9; trazar(1.7, ondulacion * 0.4);
   ctx.strokeStyle = '#fff1b0'; ctx.lineWidth = 0.4; trazar(3.4, ondulacion * 0.3);
 
-  // Brillo del ancla: crece con el calor (hielo) o con el tiempo que lleva agarrada
+  // Brillo del ancla: en hielo crece con el calor (avisa que se va a derretir)
   const tipo = material[ancla.indice];
   const progreso = tipo === HIELO
     ? limitar((temperatura[ancla.indice] - PARAMETROS.temperaturaAmbiente) / (PARAMETROS.temperaturaFusion - PARAMETROS.temperaturaAmbiente), 0, 1)
-    : 1 - ancla.tiempo / ancla.tiempoTotal;
+    : 0.3;
   ctx.globalCompositeOperation = 'lighter';
   dibujarHalo(finX, finY, 4 + 5 * progreso, '255,140,40', 0.35 + 0.55 * progreso);
   ctx.globalCompositeOperation = 'source-over';
@@ -489,12 +489,13 @@ function dibujarLengua(llama) {
 
 /* Con la lengua elegida (y sin estar colgada) la mira es una línea punteada hasta
    donde se engancharía: un anillo blanco si hay algo agarrable al alcance, o una
-   "×" gris donde termina el alcance si no. Gris apagado mientras se recarga. */
+   "×" gris donde termina el alcance si no. Gris apagado mientras se recarga o si ya
+   no le quedan enganches (hasta que pase un rato sin colgarse). */
 function dibujarMiraDeLengua(llama) {
   if (llama.ancla) return; // colgada: se ve la cuerda
   const mano = manoDeLaLlama(llama);
   const resultado = buscarAnclaDeLengua(llama);
-  const enRecarga = llama.recargaLengua > 0;
+  const enRecarga = llama.recargaLengua > 0 || enganchesRestantes(llama) <= 0;
   ctx.setLineDash([1.2, 1.6]);
   ctx.lineWidth = 0.35;
   ctx.strokeStyle = enRecarga ? 'rgba(200,210,225,0.35)' : 'rgba(255,200,120,0.75)';

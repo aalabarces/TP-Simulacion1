@@ -112,7 +112,11 @@ function empezarTurno(equipo) {
   juego.ultimaLlamaDeCadaEquipo[equipo] = juego.llamaActual;
   juego.fase = 'apuntar';
   juego.tiempoTurnoRestante = PARAMETROS.duracionTurno;
-  for (const llama of llamas) llama.combustible = 1; // el tanque del jetpack se llena en cada turno
+  for (const llama of llamas) {
+    llama.combustible = 1;         // el tanque del jetpack se llena en cada turno
+    soltarLengua(llama);           // la lengua de fuego se suelta al terminar el turno
+    llama.enganchesSeguidos = 0;   // y los enganches arrancan de cero
+  }
   recentrarCamara();   // la cámara vuelve sola a la llama del turno
   camara.foco = null;
   sortearViento();

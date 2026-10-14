@@ -62,7 +62,9 @@ const PARAMETROS = {
      Las reservas sobre el rival están a d ≈ 200 y h ≈ 55-70 → v ≈ 162-168.
      Con 200 sobra margen para tirar contra el viento. */
   potenciaMaxima: 200,
-  caudalCascada: 90,              // celdas de agua por segundo que entran por CADA costado (ver cascadas.js)
+  // Celdas de agua por segundo que entran por CADA costado (ver cascadas.js)
+  caudalCascadaPorTurnos: 150,    // Clásico y Worms
+  caudalCascadaTiempoReal: 300,   // Tiempo real (las partidas son más cortas)
 
   // Temperatura (en grados)
   temperaturaAmbiente: -6,        // la caverna tiende a esta temperatura
@@ -88,10 +90,8 @@ const PARAMETROS = {
   // Lengua de fuego (ver llama.js)
   lenguaLargoMaximo: 70,          // alcance de la lengua y largo máximo de la cuerda (celdas)
   lenguaCalor: 2.2,               // grados/s que la lengua le suma al hielo del ancla (más = se derrite antes)
-  lenguaTiempoRoca: 4,            // segundos que aguanta el ancla en roca volcánica
-  lenguaTiempoPiedra: 5,          // ídem en piedra (no se derrite: se suelta sola)
-  lenguaRecarga: 0.4,             // por turnos: segundos antes de poder lanzarla de nuevo
-  lenguaRecargaTiempoReal: 2,     // tiempo real: ídem
+  lenguaEnganchesSeguidos: 3,     // cuántas veces seguidas se puede enganchar sin apoyarse
+  lenguaReinicioEnganches: 2,     // segundos sin estar colgada para que el contador vuelva a 0
 
   // Mortero (ver llama.js)
   morteroVelocidad: 100,          // celdas/s al lanzarse con la carga al 100% (en 45° llega a ~100 celdas de distancia)
@@ -100,7 +100,7 @@ const PARAMETROS = {
   // Jetpack (ver llama.js)
   jetpackEmpuje: 190,             // celdas/s² en la dirección de la mira (la gravedad es 100)
   jetpackVelocidadMaxima: 50,     // velocidad hasta la que el empuje acelera (celdas/s)
-  jetpackConsumo: 0.3,            // fracción del tanque por segundo (~3,3 s de empuje continuo: unas 150 celdas hacia arriba)
+  jetpackConsumo: 0.15,           // fracción del tanque por segundo (~6,7 s de empuje continuo)
   jetpackRecargaTiempoReal: 0.15, // tiempo real: fracción del tanque por segundo, apoyada en el suelo
 
   // Caídas
@@ -132,7 +132,8 @@ const SLIDERS_DEBUG = [
   ['vientoSobreAgua', 'Viento → agua', 0, 80, 1],
   ['subpasosAgua', 'Nivelación agua (subpasos)', 1, 8, 1],
   ['potenciaMaxima', 'Potencia máx.', 60, 300, 5],
-  ['caudalCascada', 'Caudal cascadas (celdas/s)', 0, 200, 1],
+  ['caudalCascadaPorTurnos', 'Caudal cascadas por turnos (celdas/s)', 0, 600, 5],
+  ['caudalCascadaTiempoReal', 'Caudal cascadas tiempo real (celdas/s)', 0, 600, 5],
   ['Temperatura'],
   ['temperaturaAmbiente', 'Temp. ambiente', -30, 5, 0.5],
   ['difusionTermica', 'Difusión térmica', 0, 2, 0.01],
@@ -149,10 +150,8 @@ const SLIDERS_DEBUG = [
   ['Lengua de fuego'],
   ['lenguaLargoMaximo', 'Largo máximo', 20, 140, 1],
   ['lenguaCalor', 'Calor sobre el hielo (°/s)', 0.5, 20, 0.1],
-  ['lenguaTiempoRoca', 'Aguante en roca volcánica (s)', 1, 15, 0.5],
-  ['lenguaTiempoPiedra', 'Aguante en piedra (s)', 1, 15, 0.5],
-  ['lenguaRecarga', 'Recarga por turnos (s)', 0, 5, 0.1],
-  ['lenguaRecargaTiempoReal', 'Recarga tiempo real (s)', 0, 8, 0.1],
+  ['lenguaEnganchesSeguidos', 'Enganches seguidos', 1, 10, 1],
+  ['lenguaReinicioEnganches', 'Reinicio del contador (s)', 0.5, 10, 0.5],
   ['Mortero'],
   ['morteroVelocidad', 'Velocidad de lanzamiento', 30, 120, 1],
   ['radioMortero', 'Radio del cráter de despegue', 1, 8, 1],

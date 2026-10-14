@@ -56,6 +56,8 @@ class Llama {
     this.ancla = null;                  // { x, y, indice, tiempo, tiempoTotal, edad } mientras está agarrada
     this.largoCuerda = 0;               // celdas de cuerda: la llama no puede alejarse más del ancla
     this.recargaLengua = 0;             // segundos hasta poder lanzarla de nuevo
+    this.enganchesSeguidos = 0;         // enganches desde la última vez que estuvo un rato sin colgar
+    this.tiempoSinColgar = 0;           // segundos desde que se soltó (para reiniciar el contador)
     this.cargarAnterior = false;        // para detectar el momento en que se APRIETA disparar
     // Mortero y jetpack
     this.lanzada = false;               // volando después de lanzarse con el mortero (hasta aterrizar)
@@ -270,13 +272,17 @@ function aturdirPorCaida(llama, velocidadDeImpacto) {
        empuja: si la llama se acerca al ancla, la cuerda queda floja;
      - A / D balancean; arriba / abajo (los controles de apuntar) acortan y alargan
        la cuerda; saltar o apretar disparar suelta, conservando la velocidad.
-   El ANCLA SE DERRITE: la lengua le suma calor al hielo y cuando se funde la llama se
-   suelta. La roca y la piedra no se derriten: aguantan un tiempo fijo.
-   Si no toca nada, falla y no gasta nada; se puede volver a lanzar enseguida. */
+   Agarrada NO TIENE LÍMITE DE TIEMPO. Se suelta cuando el jugador quiere, cuando
+   termina el turno (ver empezarTurno en turnos.js) o cuando el ancla desaparece:
+     - HIELO: la lengua lo calienta (lenguaCalor) y al pasar 0° se vuelve agua: se suelta;
+     - PIEDRA y ROCA VOLCÁNICA no se derriten: aguantan para siempre (salvo una explosión).
+   LÍMITE DE ENGANCHES: se puede enganchar hasta lenguaEnganchesSeguidos veces
+   seguidas. El contador vuelve a 0 cuando la llama pasa lenguaReinicioEnganches
+   segundos sin estar colgada (así no se cruza el mapa colgándose sin parar).
+   Si no toca nada, falla y no gasta enganches; se puede volver a lanzar enseguida. */
 
 const LARGO_MINIMO_CUERDA = 6;
 const VELOCIDAD_DE_CUERDA = 28; // celdas/s al acortar o alargar
-const TIEMPO_MAXIMO_ANCLA_DE_HIELO = 8; // por si el hielo no llega a derretirse (el calor se escapa a los vecinos)
 
 function materialAgarrable(tipo) {
   return tipo === HIELO || tipo === PIEDRA || tipo === MAGMA_SOLIDO; // el agua y el magma líquido no
@@ -308,14 +314,20 @@ function buscarAnclaDeLengua(llama) {
   return { falla: true, x: mano.x + direccionX * distanciaRecorrida, y: mano.y + direccionY * distanciaRecorrida };
 }
 
-/* Cuánto aguanta un ancla de este material (segundos). */
-function tiempoDeAncla(tipo) {
-  if (tipo === HIELO) return TIEMPO_MAXIMO_ANCLA_DE_HIELO;
-  if (tipo === MAGMA_SOLIDO) return PARAMETROS.lenguaTiempoRoca;
-  return PARAMETROS.lenguaTiempoPiedra;
+function enganchesRestantes(llama) {
+  return Math.max(0, PARAMETROS.lenguaEnganchesSeguidos - llama.enganchesSeguidos);
+}
+
+/* Se llama en cada paso: si la llama lleva lenguaReinicioEnganches segundos sin
+   estar colgada, vuelve a tener todos los enganches. */
+function actualizarContadorDeEnganches(llama, dt) {
+  if (llama.ancla) { llama.tiempoSinColgar = 0; return; }
+  llama.tiempoSinColgar += dt;
+  if (llama.tiempoSinColgar >= PARAMETROS.lenguaReinicioEnganches) llama.enganchesSeguidos = 0;
 }
 
 function lanzarLengua(llama) {
+  if (enganchesRestantes(llama) <= 0) { sonarLenguaFalla(); return false; }
   const resultado = buscarAnclaDeLengua(llama);
   if (resultado.falla) {
     // Falló: no pasa nada (ni se gasta nada), solo una chispa donde terminó el intento
@@ -325,8 +337,9 @@ function lanzarLengua(llama) {
     return false;
   }
   const mano = manoDeLaLlama(llama);
-  const tiempo = tiempoDeAncla(material[resultado.indice]);
-  llama.ancla = { x: resultado.x, y: resultado.y, indice: resultado.indice, tiempo, tiempoTotal: tiempo, edad: 0 };
+  llama.ancla = { x: resultado.x, y: resultado.y, indice: resultado.indice, edad: 0 };
+  llama.enganchesSeguidos++;
+  llama.tiempoSinColgar = 0;
   llama.largoCuerda = Math.max(LARGO_MINIMO_CUERDA, distancia(mano.x, mano.y, resultado.x, resultado.y));
   crearChispas(resultado.x, resultado.y, 14, '255,170,70');
   sonarEnganche();
@@ -336,19 +349,19 @@ function lanzarLengua(llama) {
 function soltarLengua(llama) {
   if (!llama.ancla) return;
   llama.ancla = null;
-  llama.recargaLengua = esTiempoReal() ? PARAMETROS.lenguaRecargaTiempoReal : PARAMETROS.lenguaRecarga;
+  // Sin espera al soltar: se puede relanzar enseguida en el aire (el límite lo pone
+  // la cantidad de enganches seguidos, ver actualizarContadorDeEnganches)
   sonarSoltarLengua();
 }
 
-/* Antes de mover: calienta el ancla, cambia el largo de la cuerda y, si está tensa,
-   le quita a la llama la velocidad con la que se aleja del ancla (la soga tira). */
+/* Antes de mover: cambia el largo de la cuerda y, si está tensa, le quita a la
+   llama la velocidad con la que se aleja del ancla (la soga tira). */
 function tensarCuerda(llama, dt, controles) {
   const ancla = llama.ancla;
-  const tipo = material[ancla.indice];
   ancla.edad += dt;
-  ancla.tiempo -= dt;
-  // El ancla desapareció (se derritió, la rompió una explosión, se congeló el agua...) o se acabó el tiempo
-  if (!materialAgarrable(tipo) || ancla.tiempo <= 0) { soltarLengua(llama); return; }
+  // El ancla desapareció (se derritió, la rompió una explosión...): se suelta
+  const tipo = material[ancla.indice];
+  if (!materialAgarrable(tipo)) { soltarLengua(llama); return; }
   if (tipo === HIELO) temperatura[ancla.indice] += PARAMETROS.lenguaCalor * dt; // al pasar 0° se funde (temperatura.js)
 
   // Arriba acorta (trepar) y abajo alarga; solo con la lengua elegida (si no, esas teclas apuntan)
@@ -414,7 +427,8 @@ function lanzarseConMortero(llama) {
 /* ---------- Jetpack ----------
    Con el arma elegida, mantener disparar empuja a la llama hacia donde apunta
    (el empuje supera a la gravedad) mientras quede combustible. W/S giran el
-   ángulo y A/D corrigen el rumbo. El tanque se llena al empezar cada turno (en
+   ángulo y A/D dan vuelta a la llama (el empuje cambia de lado: se puede cambiar
+   de dirección en pleno vuelo). El tanque se llena al empezar cada turno (en
    tiempo real se recarga de a poco, apoyada en el suelo). El agua lo apaga. */
 function aplicarEmpujeDeJetpack(llama, dt) {
   const anguloRadianes = llama.angulo * Math.PI / 180;
@@ -476,8 +490,9 @@ function actualizarLlama(llama, dt, controles) {
   let direccion = 0;
   if (controles && controles.mover !== 0) {
     direccion = Math.sign(controles.mover);
-    // Con el jetpack empujando, A/D corrigen el rumbo pero no dan vuelta la dirección del empuje
-    if (!empujando) llama.mirando = direccion;
+    // También con el jetpack empujando: A/D dan vuelta a la llama y con ella el
+    // empuje (el ángulo se espeja), así se puede cambiar de dirección en pleno vuelo
+    llama.mirando = direccion;
   }
   if (direccion !== 0) {
     // Colgada de la lengua se balancea con más fuerza (si no, no habría forma de tomar impulso)
@@ -528,6 +543,7 @@ function actualizarLlama(llama, dt, controles) {
   llama.velocidadY = limitar(llama.velocidadY, volandoRapido ? -fisica.velocidadMaximaVuelo : -80, caidaMaxima);
 
   if (llama.ancla) tensarCuerda(llama, dt, controles);
+  actualizarContadorDeEnganches(llama, dt);
   moverConColisiones(llama, dt);
   if (!llama.vivo) return;
   if (llama.ancla) corregirPosicionPorCuerda(llama);

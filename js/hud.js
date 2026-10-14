@@ -42,7 +42,22 @@ function dibujarHud(anchoPantalla, altoPantalla, unidad) {
     dibujarSelectoresDeArmas(anchoPantalla, altoPantalla, unidad);
   }
   if (juego.cartel && juego.pantalla === 'jugando') dibujarCartel(anchoPantalla, altoPantalla, unidad);
+  if (vista.grilla) dibujarContadorDeFps(unidad);
   if (juego.pantalla === 'titulo' || juego.pantalla === 'fin') dibujarPantallaSuperpuesta(anchoPantalla, altoPantalla, unidad);
+}
+
+/* Contador de FPS (solo con la vista de grilla, tecla 9), arriba a la izquierda,
+   debajo de la franja del HUD. Verde a 55 o más, amarillo desde 30, rojo por debajo.
+   Usa el promedio suavizado de principal.js (estadisticas.fps), así el número no salta. */
+function dibujarContadorDeFps(unidad) {
+  const fps = Math.round(estadisticas.fps);
+  const x = 1.2 * unidad, y = camara.geometria.franjaHud + 1 * unidad;
+  const ancho = 9 * unidad, alto = 3 * unidad;
+  dibujarPanel(x, y, ancho, alto);
+  ctx.textAlign = 'left';
+  ctx.font = fuente(unidad, 1.6, 800);
+  ctx.fillStyle = fps >= 55 ? '#7dff9a' : fps >= 30 ? '#ffd38a' : '#ff6b5a';
+  ctx.fillText(`${fps} FPS`, x + 1 * unidad, y + 2.1 * unidad);
 }
 
 /* ---------- Panel de cada jugador (equipo) ----------
@@ -206,11 +221,11 @@ function dibujarTemporizadorYViento(anchoPantalla, unidad) {
 const AYUDA_TECLAS_POR_TURNOS =
   'Mover A/D o ←/→ · Saltar Espacio o Shift der. · Apuntar W/S o ↑/↓ · Disparar F o Enter (mantener) · Arma Q o .';
 const AYUDA_LENGUA =
-  'Lengua: Disparar (F o Enter) agarra / suelta · A/D balancear · W/S acortar / alargar · Saltar suelta';
+  'Lengua: Disparar (F o Enter) agarra / suelta · A/D balancear · W/S acortar / alargar · Saltar suelta · hasta 3 enganches seguidos';
 const AYUDA_MORTERO =
   'Mortero: mantené Disparar (F o Enter) para cargar y soltá para lanzarte · W/S ángulo · caer fuerte aturde';
 const AYUDA_JETPACK =
-  'Jetpack: mantené Disparar (F o Enter) para empujar hacia donde apuntás · W/S ángulo · A/D corregir · el agua lo apaga';
+  'Jetpack: mantené Disparar (F o Enter) para empujar hacia donde apuntás · W/S ángulo · A/D cambiar de lado en vuelo · el agua lo apaga';
 const AYUDA_TECLAS_TIEMPO_REAL = [
   'J1: A/D mover · Espacio saltar · W/S apuntar · F disparar · Q arma',
   'J2: ←/→ mover · Shift der. saltar · ↑/↓ apuntar · Enter disparar · . arma'
@@ -301,8 +316,23 @@ function dibujarSelectorDeArmas(llama, xInicial, y, altoBoton, unidad) {
       ctx.font = fuente(unidad, 1.05);
       ctx.fillText(arma.detalle, x + 4.4 * unidad, y + 3.6 * unidad);
     }
+    if (numeroArma === ARMA_LENGUA) dibujarEnganchesRestantes(llama, x + anchoBoton, y, unidad);
     x += anchoBoton + SEPARACION_BOTONES * unidad;
   });
+}
+
+/* Burbuja con los enganches que le quedan a la lengua, en la esquina de arriba a la
+   derecha de su botón (se ve siempre, esté elegida o no). Roja cuando no quedan. */
+function dibujarEnganchesRestantes(llama, xEsquina, yEsquina, unidad) {
+  const restantes = enganchesRestantes(llama);
+  const radio = 1.15 * unidad;
+  ctx.fillStyle = restantes > 0 ? '#ff8a2a' : '#c0392b';
+  ctx.beginPath(); ctx.arc(xEsquina - 0.3 * unidad, yEsquina + 0.3 * unidad, radio, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 0.15 * unidad; ctx.stroke();
+  ctx.fillStyle = '#fff';
+  ctx.font = fuente(unidad, 1.3, 800);
+  ctx.textAlign = 'center';
+  ctx.fillText(String(restantes), xEsquina - 0.3 * unidad, yEsquina + 0.75 * unidad);
 }
 
 /* Íconos de las armas, dibujados por código, centrados en (xIcono, yIcono). */

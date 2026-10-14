@@ -379,7 +379,7 @@ function actualizarSonidos() {
 
   // Ambientes solo durante la partida, con volumen según el caudal y el viento
   const jugando = juego.pantalla === 'jugando';
-  const fuerzaCascada = jugando ? Math.min(1, PARAMETROS.caudalCascada / 25) : 0;
+  const fuerzaCascada = jugando ? Math.min(1, caudalCascada() / 25) : 0;
   sonido.cascada.gain.setTargetAtTime(NIVEL_CASCADA * fuerzaCascada, t, 0.3);
   const fuerzaViento = jugando && PARAMETROS.vientoMaximo > 0 ? Math.min(1, Math.abs(viento) / PARAMETROS.vientoMaximo) : 0;
   sonido.viento.volumen.gain.setTargetAtTime(NIVEL_VIENTO_BASE + NIVEL_VIENTO_MAXIMO * fuerzaViento, t, 0.5);
