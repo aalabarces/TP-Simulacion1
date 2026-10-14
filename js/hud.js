@@ -205,14 +205,20 @@ function dibujarTemporizadorYViento(anchoPantalla, unidad) {
    Tiempo real: uno por jugador (J1 abajo a la izquierda, J2 abajo a la derecha). */
 const AYUDA_TECLAS_POR_TURNOS =
   'Mover A/D o ←/→ · Saltar Espacio o Shift der. · Apuntar W/S o ↑/↓ · Disparar F o Enter (mantener) · Arma Q o .';
+const AYUDA_LENGUA =
+  'Lengua: Disparar (F o Enter) agarra / suelta · A/D balancear · W/S acortar / alargar · Saltar suelta';
+const AYUDA_MORTERO =
+  'Mortero: mantené Disparar (F o Enter) para cargar y soltá para lanzarte · W/S ángulo · caer fuerte aturde';
+const AYUDA_JETPACK =
+  'Jetpack: mantené Disparar (F o Enter) para empujar hacia donde apuntás · W/S ángulo · A/D corregir · el agua lo apaga';
 const AYUDA_TECLAS_TIEMPO_REAL = [
   'J1: A/D mover · Espacio saltar · W/S apuntar · F disparar · Q arma',
   'J2: ←/→ mover · Shift der. saltar · ↑/↓ apuntar · Enter disparar · . arma'
 ];
 
 function dibujarSelectoresDeArmas(anchoPantalla, altoPantalla, unidad) {
-  const anchoBoton = 13 * unidad, altoBoton = 4.6 * unidad, separacion = 1 * unidad;
-  const anchoSelector = 2 * anchoBoton + separacion;
+  const altoBoton = 4.6 * unidad;
+  const anchoSelector = anchoDelSelectorDeArmas(unidad);
   const y = altoPantalla - altoBoton - 1.4 * unidad;
   ctx.font = fuente(unidad, 1.05);
   ctx.fillStyle = 'rgba(200,215,235,0.55)';
@@ -222,7 +228,7 @@ function dibujarSelectoresDeArmas(anchoPantalla, altoPantalla, unidad) {
     [0, 1].forEach(equipo => {
       const x = equipo === 0 ? margen : anchoPantalla - margen - anchoSelector;
       const llama = llamasDelEquipo(equipo)[0];
-      if (llama) dibujarSelectorDeArmas(llama, x, y, anchoBoton, altoBoton, separacion, unidad);
+      if (llama) dibujarSelectorDeArmas(llama, x, y, altoBoton, unidad);
       // La ayuda de J2 se alinea a la derecha para que no se salga de la pantalla
       ctx.textAlign = equipo === 0 ? 'left' : 'right';
       ctx.fillStyle = 'rgba(200,215,235,0.55)';
@@ -235,25 +241,38 @@ function dibujarSelectoresDeArmas(anchoPantalla, altoPantalla, unidad) {
   const llama = llamaActual();
   if (!llama) return;
   const x = anchoPantalla / 2 - anchoSelector / 2;
-  dibujarSelectorDeArmas(llama, x, y, anchoBoton, altoBoton, separacion, unidad);
+  dibujarSelectorDeArmas(llama, x, y, altoBoton, unidad);
   // Ayuda de controles sobre los botones
   ctx.textAlign = 'center';
   ctx.fillStyle = 'rgba(200,215,235,0.55)';
   ctx.font = fuente(unidad, 1.05);
   const ayudaCambio = llamasPorEquipo() > 1 ? ' · Tab cambiar llama' : '';
-  ctx.fillText(`${AYUDA_TECLAS_POR_TURNOS}${ayudaCambio} · ángulo ${Math.round(llama.angulo)}°`, anchoPantalla / 2, y - 0.8 * unidad);
+  const ayudaPorArma = { [ARMA_LENGUA]: AYUDA_LENGUA, [ARMA_MORTERO]: AYUDA_MORTERO, [ARMA_JETPACK]: AYUDA_JETPACK };
+  const ayuda = ayudaPorArma[llama.arma] || `${AYUDA_TECLAS_POR_TURNOS}${ayudaCambio} · ángulo ${Math.round(llama.angulo)}°`;
+  ctx.fillText(ayuda, anchoPantalla / 2, y - 0.8 * unidad);
 }
 
-/* Los dos botones de arma de una llama; el elegido se marca con el color del jugador. */
-function dibujarSelectorDeArmas(llama, xInicial, y, anchoBoton, altoBoton, separacion, unidad) {
-  const armas = [
-    { nombre: 'Bola de Fuego', detalle: 'cráter + calor' },
-    { nombre: 'Escupir Magma', detalle: 'barrera / cura' }
-  ];
+/* Una fila de botones de arma por llama: el elegido se muestra grande (ícono, nombre
+   y detalle, con el borde del color del jugador) y los demás como íconos chicos. */
+const ARMAS_DEL_SELECTOR = [
+  { nombre: 'Bola de Fuego', detalle: 'cráter + calor' },
+  { nombre: 'Escupir Magma', detalle: 'barrera / cura' },
+  { nombre: 'Lengua de Fuego', detalle: 'agarra y balancea' },
+  { nombre: 'Mortero', detalle: 'te lanza por el aire' },
+  { nombre: 'Jetpack', detalle: 'empuja con combustible' }
+];
+const ANCHO_BOTON_CHICO = 5, ANCHO_BOTON_ELEGIDO = 15.5, SEPARACION_BOTONES = 0.8; // en unidades del HUD
 
-  armas.forEach((arma, numeroArma) => {
-    const x = xInicial + numeroArma * (anchoBoton + separacion);
+function anchoDelSelectorDeArmas(unidad) {
+  const cantidadChicos = CANTIDAD_ARMAS - 1;
+  return (cantidadChicos * ANCHO_BOTON_CHICO + ANCHO_BOTON_ELEGIDO + (CANTIDAD_ARMAS - 1) * SEPARACION_BOTONES) * unidad;
+}
+
+function dibujarSelectorDeArmas(llama, xInicial, y, altoBoton, unidad) {
+  let x = xInicial;
+  ARMAS_DEL_SELECTOR.forEach((arma, numeroArma) => {
     const elegida = llama.arma === numeroArma;
+    const anchoBoton = (elegida ? ANCHO_BOTON_ELEGIDO : ANCHO_BOTON_CHICO) * unidad;
     dibujarPanel(x, y, anchoBoton, altoBoton);
     if (elegida) {
       trazarRectanguloRedondeado(ctx, x, y, anchoBoton, altoBoton, altoBoton * 0.18);
@@ -262,30 +281,75 @@ function dibujarSelectorDeArmas(llama, xInicial, y, anchoBoton, altoBoton, separ
       ctx.stroke();
     }
 
-    // Ícono
-    const xIcono = x + 2.4 * unidad, yIcono = y + altoBoton / 2;
-    if (numeroArma === ARMA_BOLA_DE_FUEGO) {
-      const degrade = ctx.createRadialGradient(xIcono, yIcono, 0, xIcono, yIcono, 1.3 * unidad);
-      degrade.addColorStop(0, '#fff3c4');
-      degrade.addColorStop(0.5, '#ff9a2e');
-      degrade.addColorStop(1, 'rgba(255,60,10,0)');
-      ctx.fillStyle = degrade;
-      ctx.beginPath(); ctx.arc(xIcono, yIcono, 1.3 * unidad, 0, Math.PI * 2); ctx.fill();
-    } else {
-      ctx.fillStyle = '#6b3d22';
-      ctx.beginPath(); ctx.ellipse(xIcono, yIcono + 0.2 * unidad, 1.3 * unidad, 0.9 * unidad, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#ff6a1a';
-      ctx.beginPath(); ctx.ellipse(xIcono, yIcono - 0.2 * unidad, 0.8 * unidad, 0.45 * unidad, 0, 0, Math.PI * 2); ctx.fill();
-    }
+    // Ícono: a la izquierda en el elegido, centrado en los chicos
+    const xIcono = elegida ? x + 2.4 * unidad : x + anchoBoton / 2, yIcono = y + altoBoton / 2;
+    ctx.globalAlpha = elegida ? 1 : 0.6;
+    dibujarIconoDeArma(numeroArma, xIcono, yIcono, unidad);
+    ctx.globalAlpha = 1;
 
-    ctx.textAlign = 'left';
-    ctx.fillStyle = elegida ? '#fff' : '#8a96aa';
-    ctx.font = fuente(unidad, 1.3, 600);
-    ctx.fillText(arma.nombre, x + 4.4 * unidad, y + 2.1 * unidad);
-    ctx.fillStyle = '#6f7c92';
-    ctx.font = fuente(unidad, 1.05);
-    ctx.fillText(arma.detalle, x + 4.4 * unidad, y + 3.6 * unidad);
+    if (elegida) {
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#fff';
+      ctx.font = fuente(unidad, 1.3, 600);
+      ctx.fillText(arma.nombre, x + 4.4 * unidad, y + 2.1 * unidad);
+      ctx.fillStyle = '#6f7c92';
+      ctx.font = fuente(unidad, 1.05);
+      ctx.fillText(arma.detalle, x + 4.4 * unidad, y + 3.6 * unidad);
+    }
+    x += anchoBoton + SEPARACION_BOTONES * unidad;
   });
+}
+
+/* Íconos de las armas, dibujados por código, centrados en (xIcono, yIcono). */
+function dibujarIconoDeArma(numeroArma, xIcono, yIcono, unidad) {
+  ctx.lineCap = 'round';
+  if (numeroArma === ARMA_BOLA_DE_FUEGO) {
+    const degrade = ctx.createRadialGradient(xIcono, yIcono, 0, xIcono, yIcono, 1.3 * unidad);
+    degrade.addColorStop(0, '#fff3c4');
+    degrade.addColorStop(0.5, '#ff9a2e');
+    degrade.addColorStop(1, 'rgba(255,60,10,0)');
+    ctx.fillStyle = degrade;
+    ctx.beginPath(); ctx.arc(xIcono, yIcono, 1.3 * unidad, 0, Math.PI * 2); ctx.fill();
+  } else if (numeroArma === ARMA_MAGMA) {
+    ctx.fillStyle = '#6b3d22';
+    ctx.beginPath(); ctx.ellipse(xIcono, yIcono + 0.2 * unidad, 1.3 * unidad, 0.9 * unidad, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ff6a1a';
+    ctx.beginPath(); ctx.ellipse(xIcono, yIcono - 0.2 * unidad, 0.8 * unidad, 0.45 * unidad, 0, 0, Math.PI * 2); ctx.fill();
+  } else if (numeroArma === ARMA_LENGUA) {
+    // Una cuerda de llama que sale de abajo a la izquierda y se curva hacia un ancla de hielo
+    ctx.strokeStyle = '#ff6a1a'; ctx.lineWidth = 0.55 * unidad;
+    ctx.beginPath();
+    ctx.moveTo(xIcono - 1.2 * unidad, yIcono + 1 * unidad);
+    ctx.quadraticCurveTo(xIcono - 0.2 * unidad, yIcono - 0.4 * unidad, xIcono + 1.1 * unidad, yIcono - 1 * unidad);
+    ctx.stroke();
+    ctx.strokeStyle = '#fff1b0'; ctx.lineWidth = 0.2 * unidad; ctx.stroke();
+    ctx.fillStyle = '#9ad7ff';
+    ctx.fillRect(xIcono + 0.7 * unidad, yIcono - 1.5 * unidad, 1 * unidad, 0.5 * unidad);
+  } else if (numeroArma === ARMA_MORTERO) {
+    // Un caño inclinado con una parábola de puntos saliendo de la boca
+    ctx.strokeStyle = '#8a96aa'; ctx.lineWidth = 0.9 * unidad;
+    ctx.beginPath(); ctx.moveTo(xIcono - 1.3 * unidad, yIcono + 1 * unidad); ctx.lineTo(xIcono - 0.3 * unidad, yIcono - 0.1 * unidad); ctx.stroke();
+    ctx.fillStyle = '#ffb347';
+    for (let n = 0; n < 4; n++) {
+      const t = n / 3;
+      ctx.beginPath();
+      ctx.arc(xIcono + (-0.1 + t * 1.8) * unidad, yIcono + (-0.3 - 1.4 * Math.sin(t * Math.PI)) * unidad, 0.25 * unidad, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (numeroArma === ARMA_JETPACK) {
+    // Un tanque con una llama que sale por abajo
+    ctx.fillStyle = '#8a96aa';
+    trazarRectanguloRedondeado(ctx, xIcono - 0.7 * unidad, yIcono - 1.3 * unidad, 1.4 * unidad, 1.8 * unidad, 0.4 * unidad);
+    ctx.fill();
+    const degrade = ctx.createLinearGradient(0, yIcono + 0.5 * unidad, 0, yIcono + 1.7 * unidad);
+    degrade.addColorStop(0, '#fff1b0');
+    degrade.addColorStop(0.5, '#ff9a2e');
+    degrade.addColorStop(1, 'rgba(255,60,10,0)');
+    ctx.fillStyle = degrade;
+    ctx.beginPath();
+    ctx.moveTo(xIcono - 0.5 * unidad, yIcono + 0.5 * unidad); ctx.lineTo(xIcono + 0.5 * unidad, yIcono + 0.5 * unidad);
+    ctx.lineTo(xIcono, yIcono + 1.7 * unidad); ctx.closePath(); ctx.fill();
+  }
 }
 
 /* ---------- Cartel grande en el centro ("Turno de J2", "¡J1 se apagó!") ----------
@@ -329,6 +393,8 @@ function dibujarPantallaSuperpuesta(anchoPantalla, altoPantalla, unidad) {
       'J1: A/D mover · Espacio saltar · W/S apuntar · F disparar (mantener) · Q arma',
       'J2: ←/→ mover · Shift der. saltar · ↑/↓ apuntar · Enter disparar (mantener) · . arma',
       '🎮 Joystick: stick mover · A saltar · stick der. apuntar · RT disparar · LB/RB arma · Y llama',
+      'Lengua (3.ª arma): disparar agarra / suelta · A/D balancea · W/S acorta / alarga · saltar suelta',
+      'Mortero (4.ª): mantener disparar carga, soltar te lanza · Jetpack (5.ª): mantener disparar empuja hacia donde apuntás',
       'Por turnos se puede usar cualquiera de los controles · Tab cambia de llama (Worms)',
       'P debug · 8 temperatura · 9 grilla · 0 nuevo mapa · N sonido'
     ];

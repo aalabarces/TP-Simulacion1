@@ -14,6 +14,7 @@
      Stick derecho / cruz ↑ ↓     apuntar (el stick permite ajuste fino)
      Gatillo derecho (RT)         mantener para cargar, soltar para disparar
      LB / RB                      cambiar de arma
+     LT (mantener)                cámara: stick derecho mueve, cruz ↑ ↓ zoom
      Y                            cambiar de llama (Worms)
      Start                        empezar / revancha
      Back (Select)                volver al menú (al terminar la partida)
@@ -83,13 +84,22 @@ function actualizarJoysticks() {
     liberarBotonesSoltados(joystick);
     const cruz = (botonApretado(joystick, BOTON.DERECHA) ? 1 : 0) - (botonApretado(joystick, BOTON.IZQUIERDA) ? 1 : 0);
     const cruzVertical = (botonApretado(joystick, BOTON.ARRIBA) ? 1 : 0) - (botonApretado(joystick, BOTON.ABAJO) ? 1 : 0);
+    // Con el gatillo izquierdo apretado, el stick derecho y la cruz ↑ ↓ manejan la cámara
+    // (ver camara.js) en vez de apuntar
+    const camaraManual = botonApretado(joystick, BOTON.LT);
+    const stickDerechoX = aplicarZonaMuerta(joystick.axes[2] || 0);
+    const stickDerechoY = aplicarZonaMuerta(joystick.axes[3] || 0);
     const estado = {
       numero,
       mover: cruz || aplicarZonaMuerta(joystick.axes[0] || 0),
       // En los sticks el eje Y crece hacia ABAJO: se invierte para que "arriba" sea positivo
-      apuntar: cruzVertical || -aplicarZonaMuerta(joystick.axes[3] || 0),
+      apuntar: camaraManual ? 0 : (cruzVertical || -stickDerechoY),
       saltar: botonApretado(joystick, BOTON.A),
-      cargar: botonApretado(joystick, BOTON.RT)
+      cargar: botonApretado(joystick, BOTON.RT),
+      camara: camaraManual,
+      camaraX: camaraManual ? stickDerechoX : 0,
+      camaraY: camaraManual ? stickDerechoY : 0,
+      camaraZoom: camaraManual ? cruzVertical : 0
     };
 
     // Acciones de un solo toque: solo en el cuadro en que el botón pasa de suelto a apretado

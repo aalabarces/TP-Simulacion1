@@ -19,7 +19,10 @@ Trabajo Práctico de Simulación I (UNAHUR). Juego de artillería por turnos, 1 
   Pensado para 2 joysticks (con teclado también se puede, para probar).
 
 En todos, un jugador pierde cuando se le apagan todas sus llamas. El mapa
-genera una plataforma por llama (2 o 6). En la pantalla de título el modo se
+genera una plataforma por llama (2 o 6): cada par espejado tiene su propia
+altura, casi no hay puentes entre ellas (hay que caerse, tirarse con la lengua
+o romper terreno) y no tienen nada que las cubra; encima puede haber (al azar) un cuenco con agua, uno vacío, una
+repisa o nada. El agua de las cascadas sube desde el fondo (muerte súbita). En la pantalla de título el modo se
 elige con ← / →, la cruz del joystick o 1 / 2 / 3.
 
 ## Estructura
@@ -31,8 +34,10 @@ js/
   configuracion.js      constantes, materiales, parámetros ajustables, modos de juego
   utilidades.js         matemática general: aleatorio con semilla, ruido, colores
   grilla.js             estado de la grilla (arreglos tipados por celda)
-  generador-mapa.js     mapa procedural simétrico (techo con reservas y burbujas,
-                        una plataforma por llama, puentes con pozos, lago)
+  generador-mapa.js     mapa procedural vertical 320×540: techo con reservas y burbujas,
+                        zona alta y baja con cuencos en U (distinto llenado) y repisas,
+                        arena central con una plataforma por llama (simétrica) y
+                        puentes con pozos, piedras de salvación, lago
   temperatura.js        difusión de calor, enfriamiento y cambios de estado
   fluidos.js            autómata celular del agua y el magma (Euleriano)
   particulas-agua.js    agua en caída libre (Lagrangiano)
@@ -45,7 +50,8 @@ js/
   joystick.js           joysticks (Gamepad API)
   entrada.js            teclado (un esquema por jugador) y unión con los joysticks
   dibujo-personajes.js  llama y fósforo dibujados por código
-  render.js             dibujo del terreno y del mundo
+  camara.js             cámara: zoom, desplazamiento (mouse/teclado/joystick) y seguimiento
+  render.js             dibujo del terreno y del mundo (solo lo que ve la cámara)
   hud.js                interfaz: vida, temporizador, viento, armas
   debug.js              panel de debug y sliders
   sonido.js             efectos de sonido sintetizados con Web Audio API (sin archivos)
@@ -85,12 +91,69 @@ real). En los modos por turnos, el jugador activo puede usar cualquiera de los d
 | Saltar | Espacio | Shift derecho | A / ✕ |
 | Apuntar | W / S | ↑ / ↓ | Stick derecho o cruz ↑ ↓ |
 | Cargar y disparar (mantener) | F | Enter | Gatillo derecho (RT / R2) |
-| Cambiar de arma | Q | . (punto) | LB / RB (L1 / R1) |
+| Cambiar de arma (bola · magma · lengua · mortero · jetpack) | Q | . (punto) | LB / RB (L1 / R1) |
 | Cambiar de llama (Worms) | Tab | Tab | Y / △ |
 
 Con joysticks, el primero que se conecta es de J1 y el segundo de J2 (en los
 modos por turnos alcanza con uno). El navegador los reconoce recién cuando se
 aprieta algún botón con la página abierta.
+
+### Lengua de fuego
+
+Tercera arma (la elegís con **Q**, junto a la bola de fuego y el magma). No
+dispara: lanza una lengua de fuego en la dirección de la mira (alcance 70
+celdas) y, si toca hielo, piedra o roca volcánica, te dejás colgar de ella y te
+balanceás como en una soga.
+
+- **Disparar** (F / Enter / RT) la lanza; con la lengua enganchada, la suelta. Si
+  no toca nada falla y no gasta nada.
+- **A / D** balancean; **W / S** (apuntar) acortan y alargan la cuerda.
+- **Saltar** también suelta, conservando la velocidad con la que ibas.
+- **El ancla se derrite**: la lengua calienta el hielo y a los ~3 s se funde y te
+  suelta. En roca volcánica aguanta 4 s y en piedra 5 s (no se derriten).
+- No termina el turno: podés reposicionarte y después disparar (bola de fuego o
+  magma) con el resto del turno, incluso colgado.
+- **Caídas fuertes aturden:** si aterrizás a más de 55 celdas/s (caer unas 15
+  celdas) no podés controlar a la llama hasta 2 s, según la fuerza del golpe.
+  Caer al agua no aturde. Todos los valores se ajustan en el panel de debug (P).
+
+### Mortero
+
+Cuarta arma. Se maneja como un disparo: **mantener disparar** carga la potencia,
+**W / S** giran el ángulo (una parábola punteada muestra por dónde saldrías) y
+al **soltar** la propia llama sale volando en esa dirección, hasta 100 celdas/s.
+
+- Al despegar hay una **explosión chica bajo los pies** (radio 3) que rompe el
+  suelo y empuja a las otras llamas cercanas, pero no a la tuya.
+- No termina el turno y **no tiene límite de usos**: el costo es la caída. Si
+  aterrizás a más de 55 celdas/s quedás aturdida, y caer al agua es peligroso.
+- En tiempo real tiene la misma recarga que un disparo.
+
+### Jetpack
+
+Quinta arma. **Mantener disparar** empuja a la llama hacia donde apunta (W / S
+giran el ángulo; A / D corrigen el rumbo sin dar vuelta el empuje) mientras
+quede combustible: unos 3 s de empuje continuo, que dan para subir ~150 celdas.
+
+- El tanque se **llena al empezar cada turno**; en tiempo real se recarga de a
+  poco (0,15/s) y solo apoyada en el suelo.
+- **El agua lo apaga:** dentro del agua no empuja.
+- La barra de combustible está sobre la llama. Sin combustible en el aire, te
+  caés (y la caída fuerte aturde).
+- No termina el turno: podés volar y después disparar con otra arma.
+
+### Cámara
+
+El mundo es más grande que la pantalla. Por turnos la cámara sigue a la llama
+del turno, al proyectil y al lugar del impacto; en Tiempo real encuadra a las
+dos llamas. También se maneja a mano y vuelve sola al empezar el turno, al
+disparar, con **C** o tras 6 s sin tocarla.
+
+| Acción | Mouse | Teclado | Joystick |
+|---|---|---|---|
+| Mover | arrastrar | I J K L | mantener LT + stick derecho |
+| Zoom | rueda | − / = | mantener LT + cruz ↑ ↓ |
+| Recentrar | | C | |
 
 | Otras teclas | Acción |
 |---|---|

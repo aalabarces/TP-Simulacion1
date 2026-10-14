@@ -13,10 +13,11 @@
    - A medida que el lago sube, se mueve su límite superior (mapa.filaSuperiorLago):
      el agua de abajo de esa fila es termal y no se congela (ver temperatura.js).
 
-   Ritmo (medido en la simulación): con 15 celdas/s por lado el lago sube unas
-   4 filas por minuto (el lago mide ~300 celdas de ancho y parte del agua queda
-   en el camino). Con el valor por defecto (25) sube ~7 filas por minuto y llega
-   a las plataformas (unas 60 filas más arriba) en 8-9 minutos.
+   Ritmo: con 15 celdas/s por lado el lago sube unas 4 filas por minuto (el lago
+   mide ~300 celdas de ancho y parte del agua queda en el camino), o sea ~0.27
+   filas por minuto por cada celda/s de caudal. El mundo vertical tiene las
+   plataformas ~240 filas sobre el lago: con el valor por defecto (90) sube unas
+   25 filas por minuto y las alcanza en 9-10 minutos.
    ============================================================================= */
 
 const GOTAS_CASCADA_POR_SEGUNDO = 120;   // por lado (solo visual: el caudal real lo fija la masa)

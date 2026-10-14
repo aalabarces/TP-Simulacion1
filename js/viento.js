@@ -16,24 +16,22 @@ const ESTELAS_MINIMAS = 6;             // siempre hay algunas, aunque haya calma
 const VELOCIDAD_VISUAL_VIENTO = 75;    // celdas/s de una estela con viento 1
 
 let estelasViento = [];
-const zonaViento = { filaMinima: 50, filaMaxima: 150 }; // franja de aire de la caverna
 
-/* Después de generar el mapa: la franja va desde abajo del techo hasta el lago. */
 function prepararViento() {
-  let fila = 0;
-  while (fila < ALTO_GRILLA - 1 && material[indiceDeCelda(MITAD_ANCHO, fila)] !== AIRE) fila++;
-  zonaViento.filaMinima = fila + 2;
   estelasViento = [];
 }
 
-/* Una estela nueva. Si "desdeElBorde" es true nace en el borde por donde entra
-   el viento (así las estelas "llegan" a la pantalla); si no, en cualquier lugar. */
+/* Las estelas se crean dentro de lo que ve la cámara (el mundo es muy grande: si
+   se repartieran por todo él casi no se verían). Siguen siendo celdas del mundo:
+   si la cámara se va, se quedan atrás y al vencer nacen otras en la nueva vista. */
 function crearEstelaDeViento(desdeElBorde) {
-  zonaViento.filaMaxima = mapa.filaSuperiorLago - 2; // el lago sube con las cascadas
+  const vista = rectanguloVisible(0);
+  const filaMaxima = Math.min(vista.y1, mapa.filaSuperiorLago - 2); // el lago sube con las cascadas
+  const filaMinima = Math.min(vista.y0, filaMaxima - 1);
   const sentido = viento >= 0 ? 1 : -1;
   return {
-    x: desdeElBorde ? (sentido > 0 ? 0 : ANCHO_GRILLA) : Math.random() * ANCHO_GRILLA,
-    y: zonaViento.filaMinima + Math.random() * Math.max(1, zonaViento.filaMaxima - zonaViento.filaMinima),
+    x: desdeElBorde ? (sentido > 0 ? vista.x0 : vista.x1) : vista.x0 + Math.random() * (vista.x1 - vista.x0),
+    y: filaMinima + Math.random() * Math.max(1, filaMaxima - filaMinima),
     largo: 3 + Math.random() * 6,
     rapidez: 0.7 + Math.random() * 0.6,  // cada estela va a una velocidad un poco distinta
     fase: Math.random() * Math.PI * 2,    // para la ondulación vertical
@@ -50,13 +48,14 @@ function simularViento(dt) {
   if (estelasViento.length > deseadas) estelasViento.length = deseadas;
 
   const velocidad = viento * VELOCIDAD_VISUAL_VIENTO;
+  const vista = rectanguloVisible(0);
   for (let n = 0; n < estelasViento.length; n++) {
     const estela = estelasViento[n];
     estela.edad += dt;
     estela.x += velocidad * estela.rapidez * dt;
     // Ondulación suave: la estela sube y baja siguiendo un seno
     estela.y += Math.sin(estela.edad * 2 + estela.fase) * 1.5 * dt;
-    const salio = estela.x < -10 || estela.x > ANCHO_GRILLA + 10;
+    const salio = estela.x < vista.x0 - 10 || estela.x > vista.x1 + 10;
     if (salio || estela.edad > estela.duracion) estelasViento[n] = crearEstelaDeViento(salio);
   }
 }

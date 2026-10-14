@@ -49,7 +49,10 @@ const fondoAzul = new Uint8Array(TOTAL_CELDAS);
 const mapa = {
   semilla: 0,
   filaSuperiorLago: ALTO_GRILLA - 16, // desde esta fila hacia abajo está el lago termal
-  puntosDeAparicion: []               // [{ par, lado, x }]: uno por plataforma (ver generador-mapa.js)
+  puntosDeAparicion: [],              // [{ par, lado, x, filaBusqueda }]: uno por plataforma (ver generador-mapa.js)
+  filaArena: 0,                       // altura media de las plataformas de arranque (donde se pelea)
+  filaArenaMinima: 0,                 // la más alta de las plataformas
+  filaArenaMaxima: 0                  // la más baja
 };
 
 let numeroDePaso = 0;            // cuántos pasos de fluidos se simularon

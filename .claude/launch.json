@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "fire-splash",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [".claude/servidor.py", "8123"],
+      "port": 8123
+    }
+  ]
+}

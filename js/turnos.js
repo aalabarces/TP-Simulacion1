@@ -112,6 +112,9 @@ function empezarTurno(equipo) {
   juego.ultimaLlamaDeCadaEquipo[equipo] = juego.llamaActual;
   juego.fase = 'apuntar';
   juego.tiempoTurnoRestante = PARAMETROS.duracionTurno;
+  for (const llama of llamas) llama.combustible = 1; // el tanque del jetpack se llena en cada turno
+  recentrarCamara();   // la cámara vuelve sola a la llama del turno
+  camara.foco = null;
   sortearViento();
   sonarTurno(equipo);
   mostrarCartel(`Turno de ${PALETAS_JUGADORES[equipo].nombre}`, PALETAS_JUGADORES[equipo].hud);
@@ -193,10 +196,11 @@ function prepararMundo(semilla) {
   llamas = mapa.puntosDeAparicion.map((punto, numero) => {
     const equipo = invertidos[punto.par] ? 1 - punto.lado : punto.lado;
     const x = punto.x - ancho / 2;
-    return new Llama(numero, equipo, x, buscarAlturaDeAparicion(x, ancho, alto));
+    return new Llama(numero, equipo, x, buscarAlturaDeAparicion(x, ancho, alto, punto.filaBusqueda));
   });
   juego.ultimaLlamaDeCadaEquipo = [-1, -1];
   juego.llamaActual = siguienteLlamaViva(0, -1);
+  colocarCamaraYa();
 }
 
 /* Con varias llamas por jugador, las de un mismo jugador aparecen mezcladas en
@@ -288,16 +292,50 @@ function actualizarTiempoReal(dt) {
    - El ángulo cambia a VELOCIDAD_GIRO_APUNTADO grados/s multiplicado por
      controles.apuntar (con el stick, inclinarlo poco = ajuste fino).
    - Mantener "cargar" sube la potencia; se dispara al soltar o al llegar al 100%.
-   - En tiempo real, durante la recarga no se puede cargar. */
+   - En tiempo real, durante la recarga no se puede cargar.
+   - Con el MORTERO la carga y el ángulo son los de un disparo, pero al soltar se lanza la propia
+     llama. Con el JETPACK tampoco hay carga: mantener disparar empuja (ver llama.js).
+   - Con la LENGUA elegida no hay carga: apretar disparar lanza la lengua (o la suelta,
+     si ya está agarrada). Estando colgada, arriba/abajo cambian el largo de la cuerda
+     en vez del ángulo (ver llama.js).
+   - Aturdida (caída fuerte): ningún control responde. */
 function actualizarApuntado(llama, dt, controles) {
   llama.recarga = Math.max(0, llama.recarga - dt);
-  llama.angulo = limitar(llama.angulo + VELOCIDAD_GIRO_APUNTADO * controles.apuntar * dt, -40, 90);
+  llama.recargaLengua = Math.max(0, llama.recargaLengua - dt);
+  if (llama.aturdida > 0) controles = { mover: 0, apuntar: 0, saltar: false, cargar: false };
+
+  // Momento en que se APRIETA disparar (para la lengua, que no se mantiene)
+  const recienApretado = controles.cargar && !llama.cargarAnterior;
+  llama.cargarAnterior = controles.cargar;
+
+  const manejandoLaCuerda = llama.arma === ARMA_LENGUA && llama.ancla;
+  if (!manejandoLaCuerda) {
+    llama.angulo = limitar(llama.angulo + VELOCIDAD_GIRO_APUNTADO * controles.apuntar * dt, -40, 90);
+  }
+
+  if (llama.arma === ARMA_LENGUA) {
+    if (recienApretado) {
+      if (llama.ancla) soltarLengua(llama);
+      else if (llama.recargaLengua <= 0) lanzarLengua(llama);
+    }
+    return;
+  }
+
+  // El jetpack no carga ni dispara: empuja (ver llama.js)
+  if (llama.arma === ARMA_JETPACK) return;
 
   if (controles.cargar && llama.recarga <= 0) {
     llama.cargando = true;
     llama.potencia = Math.min(1, llama.potencia + dt / TIEMPO_CARGA_COMPLETA);
-    if (llama.potencia >= 1) disparar(llama);
+    if (llama.potencia >= 1) soltarCarga(llama);
   } else if (llama.cargando) {
-    disparar(llama);
+    soltarCarga(llama);
   }
+}
+
+/* Al soltar (o completar) la carga: con el mortero la llama se lanza a sí misma; con
+   las demás armas sale el proyectil. */
+function soltarCarga(llama) {
+  if (llama.arma === ARMA_MORTERO) lanzarseConMortero(llama);
+  else disparar(llama);
 }

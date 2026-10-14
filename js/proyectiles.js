@@ -35,6 +35,7 @@ function disparar(tirador) {
     edad: 0
   });
   sonarDisparo(tirador.arma);
+  recentrarCamara(); // por turnos la cámara sigue al proyectil
   tirador.cargando = false;
   tirador.potencia = 0;
   if (MODOS_DE_JUEGO[juego.modo].tiempoReal) {
@@ -98,6 +99,7 @@ function simularProyectil(p, dt) {
 }
 
 function explotar(p, x, y) {
+  camara.foco = { x, y }; // donde mira la cámara mientras el agua se asienta
   if (p.arma === ARMA_BOLA_DE_FUEGO) {
     explotarBolaDeFuego(x, y);
   } else {
@@ -129,9 +131,9 @@ function recorrerCirculo(centroX, centroY, radio, funcion) {
    - Anillo (de radioCrater a radioAnilloCalor): recibe calor que disminuye
      linealmente hacia afuera. Con el calor por defecto, el hielo del borde
      interno se derrite en agua y el del borde externo solo se entibia. */
-function explotarBolaDeFuego(x, y) {
-  const radioCrater = PARAMETROS.radioCrater;
-  const radioAnillo = Math.max(PARAMETROS.radioAnilloCalor, radioCrater + 1);
+function explotarBolaDeFuego(x, y, opciones = {}) {
+  const radioCrater = opciones.radioCrater ?? PARAMETROS.radioCrater;
+  const radioAnillo = Math.max(opciones.radioAnillo ?? PARAMETROS.radioAnilloCalor, radioCrater + 1);
 
   recorrerCirculo(x, y, radioAnillo, (indice, distanciaAlCentro, celdaX, celdaY) => {
     const tipo = material[indice];
@@ -152,19 +154,31 @@ function explotarBolaDeFuego(x, y) {
   // El agua alrededor del cráter puede caer o correrse: despertar toda la zona (con 1 celda de margen)
   despertarZona(x - radioAnillo - 1, y - radioAnillo - 1, x + radioAnillo + 1, y + radioAnillo + 1);
 
-  empujarLlamas(x, y, radioAnillo + 4);
-  sonarExplosion();
-  crearChispas(x, y, 50, '255,160,50');
-  crearHumo(x, y, 8);
+  empujarLlamas(x, y, radioAnillo + 4, opciones.excluir);
+  if (!opciones.silenciosa) sonarExplosion();
+  crearChispas(x, y, opciones.chispas ?? 50, '255,160,50');
+  crearHumo(x, y, opciones.chispas ? 4 : 8);
   crearDestello(x, y, radioAnillo * 1.6, 0.35, '255,150,50');
-  juego.temblor = 0.35;
+  juego.temblor = Math.max(juego.temblor, opciones.temblor ?? 0.35);
+}
+
+/* Explosión chica bajo los pies de una llama que se lanza con el mortero: rompe el
+   suelo (cráter de PARAMETROS.radioMortero) y empuja a las demás llamas cercanas,
+   pero no a la propia. */
+function explosionDeDespegue(llama) {
+  explotarBolaDeFuego(llama.centroX, llama.y + llama.alto, {
+    radioCrater: PARAMETROS.radioMortero,
+    radioAnillo: PARAMETROS.radioMortero + 4,
+    excluir: llama, silenciosa: true, chispas: 22, temblor: 0.12
+  });
 }
 
 /* Onda expansiva: empuja a las llamas alejándolas del centro.
    La fuerza es máxima en el centro y baja linealmente hasta 0 en el radio.
    Además los levanta un poco (-15 en Y) para que "salten" con la explosión. */
-function empujarLlamas(x, y, radio) {
+function empujarLlamas(x, y, radio, excluida) {
   for (const llama of llamas) {
+    if (llama === excluida) continue;
     const dx = llama.centroX - x, dy = llama.centroY - y;
     const distanciaAlCentro = Math.hypot(dx, dy);
     if (distanciaAlCentro >= radio || distanciaAlCentro < 0.01) continue;

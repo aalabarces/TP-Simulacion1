@@ -5,11 +5,12 @@
    ============================================================================= */
 
 /* ---------- Tamaño del mundo ----------
-   El mundo es una grilla de 320 x 180 celdas (proporción 16:9).
+   El mundo es una grilla de 320 x 540 celdas: alto y angosto, mucho más grande
+   que la pantalla (la cámara, en camara.js, muestra una parte).
    Todas las distancias y velocidades del juego se miden en CELDAS
    (por ejemplo, "gravedad 100" = 100 celdas/s²). */
 const ANCHO_GRILLA = 320;
-const ALTO_GRILLA = 180;
+const ALTO_GRILLA = 540;
 const TOTAL_CELDAS = ANCHO_GRILLA * ALTO_GRILLA;
 
 /* La simulación avanza en pasos fijos de 1/60 s (60 pasos por segundo),
@@ -61,7 +62,7 @@ const PARAMETROS = {
      Las reservas sobre el rival están a d ≈ 200 y h ≈ 55-70 → v ≈ 162-168.
      Con 200 sobra margen para tirar contra el viento. */
   potenciaMaxima: 200,
-  caudalCascada: 25,              // celdas de agua por segundo que entran por CADA costado (ver cascadas.js)
+  caudalCascada: 90,              // celdas de agua por segundo que entran por CADA costado (ver cascadas.js)
 
   // Temperatura (en grados)
   temperaturaAmbiente: -6,        // la caverna tiende a esta temperatura
@@ -83,6 +84,28 @@ const PARAMETROS = {
   temperaturaMagma: 1000,         // temperatura del magma recién escupido
   temperaturaSolidificacion: 600, // magma líquido -> magma sólido
   fluidezMagma: 0.3,              // probabilidad por paso de que el magma se corra de costado
+
+  // Lengua de fuego (ver llama.js)
+  lenguaLargoMaximo: 70,          // alcance de la lengua y largo máximo de la cuerda (celdas)
+  lenguaCalor: 2.2,               // grados/s que la lengua le suma al hielo del ancla (más = se derrite antes)
+  lenguaTiempoRoca: 4,            // segundos que aguanta el ancla en roca volcánica
+  lenguaTiempoPiedra: 5,          // ídem en piedra (no se derrite: se suelta sola)
+  lenguaRecarga: 0.4,             // por turnos: segundos antes de poder lanzarla de nuevo
+  lenguaRecargaTiempoReal: 2,     // tiempo real: ídem
+
+  // Mortero (ver llama.js)
+  morteroVelocidad: 100,          // celdas/s al lanzarse con la carga al 100% (en 45° llega a ~100 celdas de distancia)
+  radioMortero: 3,                // radio del cráter bajo los pies al despegar
+
+  // Jetpack (ver llama.js)
+  jetpackEmpuje: 190,             // celdas/s² en la dirección de la mira (la gravedad es 100)
+  jetpackVelocidadMaxima: 50,     // velocidad hasta la que el empuje acelera (celdas/s)
+  jetpackConsumo: 0.3,            // fracción del tanque por segundo (~3,3 s de empuje continuo: unas 150 celdas hacia arriba)
+  jetpackRecargaTiempoReal: 0.15, // tiempo real: fracción del tanque por segundo, apoyada en el suelo
+
+  // Caídas
+  aturdimientoVelocidad: 55,      // celdas/s de caída desde la que el golpe aturde (el salto normal llega a 32)
+  aturdimientoMaximo: 2,          // segundos aturdida con la caída más fuerte (90 celdas/s)
 
   // Daño y turnos
   temperaturaCuracion: 150,       // el magma sólido cura solo si está más caliente que esto
@@ -109,7 +132,7 @@ const SLIDERS_DEBUG = [
   ['vientoSobreAgua', 'Viento → agua', 0, 80, 1],
   ['subpasosAgua', 'Nivelación agua (subpasos)', 1, 8, 1],
   ['potenciaMaxima', 'Potencia máx.', 60, 300, 5],
-  ['caudalCascada', 'Caudal cascadas (celdas/s)', 0, 60, 1],
+  ['caudalCascada', 'Caudal cascadas (celdas/s)', 0, 200, 1],
   ['Temperatura'],
   ['temperaturaAmbiente', 'Temp. ambiente', -30, 5, 0.5],
   ['difusionTermica', 'Difusión térmica', 0, 2, 0.01],
@@ -123,6 +146,24 @@ const SLIDERS_DEBUG = [
   ['radioMagma', 'Radio magma', 1, 10, 1],
   ['fluidezMagma', 'Fluidez magma', 0, 1, 0.01],
   ['temperaturaSolidificacion', 'Temp. solidificación', 100, 950, 10],
+  ['Lengua de fuego'],
+  ['lenguaLargoMaximo', 'Largo máximo', 20, 140, 1],
+  ['lenguaCalor', 'Calor sobre el hielo (°/s)', 0.5, 20, 0.1],
+  ['lenguaTiempoRoca', 'Aguante en roca volcánica (s)', 1, 15, 0.5],
+  ['lenguaTiempoPiedra', 'Aguante en piedra (s)', 1, 15, 0.5],
+  ['lenguaRecarga', 'Recarga por turnos (s)', 0, 5, 0.1],
+  ['lenguaRecargaTiempoReal', 'Recarga tiempo real (s)', 0, 8, 0.1],
+  ['Mortero'],
+  ['morteroVelocidad', 'Velocidad de lanzamiento', 30, 120, 1],
+  ['radioMortero', 'Radio del cráter de despegue', 1, 8, 1],
+  ['Jetpack'],
+  ['jetpackEmpuje', 'Empuje (celdas/s²)', 100, 400, 5],
+  ['jetpackVelocidadMaxima', 'Velocidad máxima', 20, 120, 1],
+  ['jetpackConsumo', 'Consumo (tanque/s)', 0.05, 1.5, 0.01],
+  ['jetpackRecargaTiempoReal', 'Recarga tiempo real (tanque/s)', 0, 1, 0.01],
+  ['Caídas'],
+  ['aturdimientoVelocidad', 'Velocidad que aturde', 30, 90, 1],
+  ['aturdimientoMaximo', 'Aturdimiento máximo (s)', 0, 6, 0.1],
   ['Daño / turnos'],
   ['danioPorGota', 'Daño por gota', 0, 10, 0.1],
   ['danioSumergidoPorSegundo', 'Daño sumergido / s', 0, 60, 1],
@@ -149,7 +190,9 @@ const FISICA_LLAMA = {
   friccionAire: 3,
   velocidadSalto: 32,        // con gravedad 100 da un salto de ~5 celdas (v² / 2g)
   velocidadNado: 22,         // "patada" para salir del agua
-  velocidadCaidaMaxima: 90
+  velocidadCaidaMaxima: 90,
+  aceleracionColgada: 60,     // balanceo: celdas/s² horizontales al apretar A/D colgada de la lengua
+  velocidadMaximaVuelo: 120   // tope de velocidad (en cualquier eje) colgada de la lengua, lanzada por el mortero o con el jetpack
 };
 
 /* ---------- Jugadores (equipos) y modos de juego ----------

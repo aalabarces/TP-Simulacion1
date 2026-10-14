@@ -11,12 +11,16 @@
      Apuntar          W / S              ↑ / ↓
      Cargar/disparar  F (mantener)       Enter (mantener)
      Cambiar arma     Q                  . (punto)
+     (con la lengua de fuego: disparar la lanza o la suelta; saltar también suelta)
 
    En los modos POR TURNOS los dos esquemas (y cualquier joystick) controlan a
    la llama del turno: el que juega usa el que le quede más cómodo.
 
    Ojo: muchos teclados no registran más de 3 o 4 teclas a la vez ("ghosting");
    para Tiempo real conviene usar joysticks.
+
+   Cámara (ver camara.js): I J K L mover · - / = zoom · C recentrar · rueda del
+   mouse zoom · arrastrar con el mouse mover.
 
    Otras teclas: Tab cambiar de llama (Worms) · P debug · N sonido ·
    8 vista de temperatura · 9 vista de grilla · 0 nuevo mapa · M menú (al terminar).
@@ -109,7 +113,7 @@ function ejecutarAccion(accion, jugador) {
       break;
     case 'cambiarArma': {
       const llama = llamaQueManeja(jugador);
-      if (puedeCambiarDeArma(llama)) { llama.arma = 1 - llama.arma; sonarCambioDeLlama(); }
+      if (puedeCambiarDeArma(llama)) { llama.arma = (llama.arma + 1) % CANTIDAD_ARMAS; sonarCambioDeLlama(); }
       break;
     }
   }
@@ -151,6 +155,7 @@ window.addEventListener('keydown', evento => {
     case 'KeyQ': case 'Period': ejecutarAccion('cambiarArma', jugador); break;
     case 'KeyP': alternarPanelDebug(); break;
     case 'KeyN': alternarSilencio(); break;
+    case 'KeyC': recentrarCamara(); break;
     case 'Digit8': cambiarVista('temperatura', !vista.temperatura); break;
     case 'Digit9': cambiarVista('grilla', !vista.grilla); break;
     case 'Digit0': if (juego.pantalla === 'jugando') empezarPartida(); else prepararMundo(); break;

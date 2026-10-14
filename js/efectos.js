@@ -58,6 +58,21 @@ function crearHumo(x, y, cantidad) {
   }
 }
 
+/* Llama de escape del jetpack: chispas y algo de humo que salen en la dirección (dirX, dirY). */
+function crearEscape(x, y, dirX, dirY) {
+  for (let n = 0; n < 2 && hayLugarParaEfectos(); n++) {
+    const rapidez = 35 + Math.random() * 25;
+    efectos.push({
+      tipo: EFECTO_CHISPA, x, y,
+      velocidadX: dirX * rapidez + (Math.random() - 0.5) * 14,
+      velocidadY: dirY * rapidez + (Math.random() - 0.5) * 14,
+      edad: 0, duracion: 0.15 + Math.random() * 0.25,
+      color: Math.random() < 0.5 ? '255,210,90' : '255,110,30'
+    });
+  }
+  if (Math.random() < 0.2) crearHumo(x, y, 1);
+}
+
 function crearDestello(x, y, radio, duracion, colorRGB) {
   efectos.push({ tipo: EFECTO_DESTELLO, x, y, edad: 0, duracion, radio, color: colorRGB });
 }

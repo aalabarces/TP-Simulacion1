@@ -24,6 +24,7 @@ const sonido = {
   cargas: new Map(),       // tono continuo de cada llama mientras carga el disparo
   cascada: null,           // ambiente de las cascadas
   viento: null,            // ambiente del viento
+  jet: null,               // turbina del jetpack
   vaporPendiente: 0,       // vapor acumulado en este cuadro (se suena todo junto)
   chapoteosPendientes: 0,  // gotas que cayeron en este cuadro
   ultimoVapor: 0,
@@ -171,10 +172,58 @@ function sonarApagarse() {
   tono('triangle', 620, 140, t + 0.1, 0.9).connect(envolvente(t + 0.1, 0.14, 0.02, 0.9));
 }
 
+/* Mortero: un "¡pum!" grave (la explosión bajo los pies) y un silbido que sube mientras sale disparada. */
+function sonarMortero() {
+  if (!audioListo()) return;
+  const t = sonido.contexto.currentTime;
+  tono('sine', 140, 45, t, 0.3).connect(envolvente(t, 0.5, 0.004, 0.3));
+  fuenteDeRuido(t, 0.35).connect(crearFiltro('lowpass', 900)).connect(envolvente(t, 0.35, 0.005, 0.3));
+  const filtro = crearFiltro('bandpass', 700, 1.1);
+  filtro.frequency.exponentialRampToValueAtTime(3000, t + 0.4);
+  fuenteDeRuido(t + 0.03, 0.45).connect(filtro).connect(envolvente(t + 0.03, 0.2, 0.03, 0.4));
+}
+
 function sonarSalto() {
   if (!audioListo()) return;
   const t = sonido.contexto.currentTime;
   tono('sine', 280, 560, t, 0.12).connect(envolvente(t, 0.06, 0.005, 0.12));
+}
+
+/* Lengua de fuego: lanzarla ("fsst" agudo que sube), engancharse (golpecito + chisporroteo),
+   soltarla (chasquido corto) y fallar (el "fsst" solo, más flojo y que se apaga). */
+function sonarLenguaFalla() {
+  if (!audioListo()) return;
+  const t = sonido.contexto.currentTime;
+  const filtro = crearFiltro('bandpass', 1200, 1.4);
+  filtro.frequency.exponentialRampToValueAtTime(3200, t + 0.12);
+  fuenteDeRuido(t, 0.2).connect(filtro).connect(envolvente(t, 0.16, 0.005, 0.15));
+}
+
+function sonarEnganche() {
+  if (!audioListo()) return;
+  const t = sonido.contexto.currentTime;
+  const filtro = crearFiltro('bandpass', 1200, 1.4);
+  filtro.frequency.exponentialRampToValueAtTime(3200, t + 0.1);
+  fuenteDeRuido(t, 0.16).connect(filtro).connect(envolvente(t, 0.2, 0.005, 0.12));
+  tono('triangle', 180, 90, t + 0.08, 0.14).connect(envolvente(t + 0.08, 0.3, 0.004, 0.14));
+  fuenteDeRuido(t + 0.08, 0.3).connect(crearFiltro('highpass', 4000)).connect(envolvente(t + 0.08, 0.1, 0.005, 0.25));
+}
+
+function sonarSoltarLengua() {
+  if (!audioListo()) return;
+  const t = sonido.contexto.currentTime;
+  fuenteDeRuido(t, 0.1).connect(crearFiltro('highpass', 3000)).connect(envolvente(t, 0.12, 0.003, 0.08));
+  tono('sine', 420, 200, t, 0.08).connect(envolvente(t, 0.1, 0.003, 0.08));
+}
+
+/* Golpe contra el suelo que aturde: más grave y largo cuanto más fuerte la caída (0 a 1). */
+function sonarAturdimiento(fuerza) {
+  if (!audioListo()) return;
+  const t = sonido.contexto.currentTime;
+  tono('sine', 110 - 30 * fuerza, 40, t, 0.35).connect(envolvente(t, 0.35 + 0.3 * fuerza, 0.004, 0.35));
+  fuenteDeRuido(t, 0.25).connect(crearFiltro('lowpass', 500)).connect(envolvente(t, 0.25, 0.004, 0.22));
+  // Campanitas mareadas
+  tono('sine', 880, 700, t + 0.15, 0.4).connect(envolvente(t + 0.15, 0.05, 0.01, 0.4));
 }
 
 /* Ráfaga al cambiar el sentido del viento: un "fuuush" que CRUZA de un parlante
@@ -270,6 +319,15 @@ function crearAmbientes() {
   fuenteDeRuido(t).connect(filtroViento).connect(volumenViento);
   volumenViento.connect(sonido.salidaAmbiente);
   sonido.viento = { volumen: volumenViento, filtro: filtroViento };
+
+  // Jetpack: ruido grave y rasposo que sube de tono con el empuje. Sale por el canal de
+  // efectos (no por el ambiente): es parte de la acción.
+  const filtroJet = crearFiltro('lowpass', 900, 0.8);
+  const volumenJet = sonido.contexto.createGain();
+  volumenJet.gain.value = 0;
+  fuenteDeRuido(t).connect(filtroJet).connect(volumenJet);
+  volumenJet.connect(sonido.salida);
+  sonido.jet = { volumen: volumenJet, filtro: filtroJet };
 }
 
 /* Un tono de carga por cada llama que está cargando (en tiempo real pueden ser
@@ -313,6 +371,11 @@ function actualizarSonidos() {
   sonido.salidaAmbiente.gain.setTargetAtTime(PARAMETROS.volumenAmbiente, t, 0.05);
 
   actualizarTonoDeCarga();
+
+  // Turbina del jetpack: suena mientras alguna llama está empujando
+  const propulsando = juego.pantalla === 'jugando' && llamas.some(llama => llama.vivo && llama.propulsando);
+  sonido.jet.volumen.gain.setTargetAtTime(propulsando ? 0.16 : 0, t, 0.04);
+  sonido.jet.filtro.frequency.setTargetAtTime(propulsando ? 700 + 250 * Math.sin(t * 17) : 500, t, 0.03);
 
   // Ambientes solo durante la partida, con volumen según el caudal y el viento
   const jugando = juego.pantalla === 'jugando';

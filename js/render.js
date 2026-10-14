@@ -2,9 +2,9 @@
 /* =============================================================================
    DIBUJO DEL MUNDO
 
-   1) El terreno se pinta píxel por píxel en una imagen chica de 320x180
-      (un píxel por celda) y después se estira al tamaño de la pantalla sin
-      suavizado, para que se vea pixelado.
+   1) El terreno se pinta píxel por píxel en una imagen del tamaño del mundo
+      (un píxel por celda; solo las celdas que ve la cámara) y después se
+      estira al tamaño de la pantalla sin suavizado, para que se vea pixelado.
    2) Encima se dibujan, ya en coordenadas de celda, las luces, las gotas,
       el proyectil, los personajes, la mira y los efectos.
    3) Por último el HUD, en píxeles de pantalla (ver hud.js).
@@ -81,16 +81,20 @@ const COLORES_VISTA_GRILLA = [
 const celdasDeAguaParcial = [];
 const MASA_PARA_CELDA_LLENA = 0.97;
 
-function pintarTerreno() {
+/* Pinta las celdas del rectángulo [x0, x1) × [y0, y1) (las que se ven: ver
+   rectanguloVisible en camara.js). Las demás conservan su imagen anterior. */
+function pintarTerreno(x0, y0, x1, y1) {
   celdasDeAguaParcial.length = 0;
-  if (vista.temperatura) { pintarVistaTemperatura(); return; }
+  if (vista.temperatura) { pintarVistaTemperatura(x0, y0, x1, y1); return; }
   if (vista.grilla) {
-    for (let i = 0; i < TOTAL_CELDAS; i++) pixelesTerreno[i] = COLORES_VISTA_GRILLA[material[i]];
+    for (let y = y0; y < y1; y++) {
+      for (let x = x0, i = y * ANCHO_GRILLA + x0; x < x1; x++, i++) pixelesTerreno[i] = COLORES_VISTA_GRILLA[material[i]];
+    }
     return;
   }
 
-  for (let y = 0; y < ALTO_GRILLA; y++) {
-    for (let x = 0; x < ANCHO_GRILLA; x++) {
+  for (let y = y0; y < y1; y++) {
+    for (let x = x0; x < x1; x++) {
       const indice = y * ANCHO_GRILLA + x;
       const grados = temperatura[indice];
       const ruido = texturaRuido[indice] / 255 - 0.5;             // -0.5 .. 0.5
@@ -178,12 +182,14 @@ function pintarTerreno() {
   }
 }
 
-function pintarVistaTemperatura() {
-  for (let i = 0; i < TOTAL_CELDAS; i++) {
-    const color = colorDeTemperatura(temperatura[i]);
-    if (material[i] !== AIRE) { pixelesTerreno[i] = color; continue; }
-    // El aire se oscurece al 35% para que se distingan las formas del terreno
-    pixelesTerreno[i] = colorPixel(rojoDe(color) * 0.35, verdeDe(color) * 0.35, azulDe(color) * 0.35);
+function pintarVistaTemperatura(x0, y0, x1, y1) {
+  for (let y = y0; y < y1; y++) {
+    for (let x = x0, i = y * ANCHO_GRILLA + x0; x < x1; x++, i++) {
+      const color = colorDeTemperatura(temperatura[i]);
+      if (material[i] !== AIRE) { pixelesTerreno[i] = color; continue; }
+      // El aire se oscurece al 35% para que se distingan las formas del terreno
+      pixelesTerreno[i] = colorPixel(rojoDe(color) * 0.35, verdeDe(color) * 0.35, azulDe(color) * 0.35);
+    }
   }
 }
 
@@ -191,36 +197,45 @@ function pintarVistaTemperatura() {
 
 function dibujarCuadro() {
   const anchoPantalla = lienzo.width, altoPantalla = lienzo.height;
+  if (anchoPantalla < 2 || altoPantalla < 2) return; // ventana minimizada o sin tamaño
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = '#05070c';
   ctx.fillRect(0, 0, anchoPantalla, altoPantalla);
 
-  // Unidad del HUD: 1% del ancho de un área 16:9 que entra en la ventana
-  const unidad = calcularUnidadHud(anchoPantalla, altoPantalla);
-
-  // Escala del mundo: cuántos píxeles mide una celda. Se deja una franja
-  // arriba para el HUD, así no tapa las reservas de agua del techo.
-  const franjaHud = 9.8 * unidad;
-  const pixelesPorCelda = Math.min(anchoPantalla / ANCHO_GRILLA, (altoPantalla - franjaHud) / ALTO_GRILLA);
-  const margenX = (anchoPantalla - ANCHO_GRILLA * pixelesPorCelda) / 2;
-  const margenY = franjaHud + (altoPantalla - franjaHud - ALTO_GRILLA * pixelesPorCelda) / 2;
+  // La cámara (camara.js) dice qué parte del mundo se ve y con qué zoom. Arriba
+  // queda una franja para el HUD, así no tapa las reservas de agua del techo.
+  const g = camara.geometria;
+  const unidad = g.unidad;
+  const escala = pixelesPorCelda();
 
   // Temblor de cámara: desplazamiento aleatorio que se achica con el tiempo
-  const intensidadTemblor = juego.temblor * 1.2 * pixelesPorCelda;
+  const intensidadTemblor = juego.temblor * 1.2 * escala;
   const temblorX = (Math.random() - 0.5) * intensidadTemblor;
   const temblorY = (Math.random() - 0.5) * intensidadTemblor;
 
-  // Terreno
-  pintarTerreno();
-  ctxTerreno.putImageData(imagenTerreno, 0, 0);
+  // Terreno: solo se pinta lo que se ve
+  const visible = rectanguloVisible(2);
+  const anchoVisible = visible.x1 - visible.x0, altoVisible = visible.y1 - visible.y0;
+  pintarTerreno(visible.x0, visible.y0, visible.x1, visible.y1);
+  ctxTerreno.putImageData(imagenTerreno, 0, 0, visible.x0, visible.y0, anchoVisible, altoVisible);
+
+  // Lo que se sale de la franja del mundo (por ejemplo, el temblor) se recorta
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, g.franjaHud, anchoPantalla, g.altoVista);
+  ctx.clip();
+
   // A partir de acá se dibuja en unidades de CELDA
-  ctx.setTransform(pixelesPorCelda, 0, 0, pixelesPorCelda, margenX + temblorX, margenY + temblorY);
+  ctx.setTransform(escala, 0, 0, escala,
+    anchoPantalla / 2 - camara.x * escala + temblorX,
+    g.franjaHud + g.altoVista / 2 - camara.y * escala + temblorY);
   ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(lienzoTerreno, 0, 0);
+  ctx.drawImage(lienzoTerreno, visible.x0, visible.y0, anchoVisible, altoVisible,
+                visible.x0, visible.y0, anchoVisible, altoVisible);
 
   if (vista.grilla) {
-    dibujarLineasDeGrilla(pixelesPorCelda);
-    dibujarBloquesDespiertos(pixelesPorCelda);
+    dibujarLineasDeGrilla(escala);
+    dibujarBloquesDespiertos(escala);
   }
   if (!vista.grilla && !vista.temperatura) dibujarAguaParcial();
   dibujarLuces();
@@ -231,6 +246,7 @@ function dibujarCuadro() {
   dibujarMiras();
   dibujarEfectos();
 
+  ctx.restore(); // saca el recorte del mundo: el HUD se dibuja en toda la pantalla
   dibujarHud(anchoPantalla, altoPantalla, unidad);
 }
 
@@ -329,6 +345,8 @@ function dibujarTodasLasLlamas() {
     if (llama.vivo) {
       dibujarLlama(ctx, llama.centroX, pies + 0.3, 0.82, llama.paleta, llama.vida / VIDA_MAXIMA,
                    tiempoTotal + llama.numero * 3, llama.mirando, llama.tiempoHerido > 0);
+      if (llama.ancla) dibujarLengua(llama);
+      if (llama.aturdida > 0) dibujarEstrellasDeAturdimiento(llama);
       if (llama.curandose) {
         // "+" verde que sube en loop
         ctx.fillStyle = 'rgba(120,255,140,0.9)';
@@ -381,6 +399,9 @@ function dibujarMiras() {
 /* Mira: puntos en la dirección del ángulo, retícula a 17 celdas, barra de
    potencia mientras carga y, en tiempo real, barra gris de recarga. */
 function dibujarMira(llama) {
+  if (llama.arma === ARMA_LENGUA) { dibujarMiraDeLengua(llama); return; }
+  if (llama.arma === ARMA_JETPACK) { dibujarMiraDeJetpack(llama); return; }
+  if (llama.arma === ARMA_MORTERO && llama.cargando) dibujarTrayectoriaDeMortero(llama);
   const anguloRadianes = llama.angulo * Math.PI / 180;
   const direccionX = Math.cos(anguloRadianes) * llama.mirando;
   const direccionY = -Math.sin(anguloRadianes);
@@ -416,6 +437,148 @@ function dibujarMira(llama) {
     ctx.fillRect(xBarra, yBarra, anchoBarra, 1);
     ctx.fillStyle = 'rgba(200,210,225,0.8)';
     ctx.fillRect(xBarra, yBarra, anchoBarra * llama.recarga / PARAMETROS.recargaDisparo, 1);
+  }
+}
+
+/* Lengua de fuego enganchada: una cuerda de llama que ondula entre la mano de la
+   llama y el ancla (floja si está floja, derecha si está tensa), más un brillo en el
+   ancla que crece a medida que se derrite o se le acaba el tiempo. */
+function dibujarLengua(llama) {
+  const ancla = llama.ancla;
+  const mano = manoDeLaLlama(llama);
+  // La lengua "sale disparada": en los primeros 0.1 s llega solo hasta una parte del camino
+  const avance = Math.min(1, ancla.edad / 0.1);
+  const finX = mano.x + (ancla.x - mano.x) * avance, finY = mano.y + (ancla.y - mano.y) * avance;
+  const largo = Math.hypot(finX - mano.x, finY - mano.y);
+  if (largo < 0.5) return;
+
+  const dirX = (finX - mano.x) / largo, dirY = (finY - mano.y) / largo;
+  const normalX = -dirY, normalY = dirX;
+  // Si la cuerda está floja, cuelga en curva; si está tensa, queda casi recta
+  const holgura = Math.max(0, llama.largoCuerda - largo);
+  const ondulacion = Math.min(6, 0.6 + holgura * 0.5);
+  const segmentos = Math.max(6, Math.ceil(largo / 2.2));
+  const trazar = (desfase, amplitud) => {
+    ctx.beginPath();
+    for (let n = 0; n <= segmentos; n++) {
+      const t = n / segmentos;
+      // La amplitud es 0 en las puntas y máxima en el medio; la onda viaja con el tiempo
+      const onda = Math.sin(t * 9 - tiempoTotal * 14 + desfase) * amplitud * Math.sin(t * Math.PI);
+      const colgado = Math.sin(t * Math.PI) * holgura * 0.35; // la curva de una cuerda floja
+      const x = mano.x + (finX - mano.x) * t + normalX * onda;
+      const y = mano.y + (finY - mano.y) * t + normalY * onda + colgado;
+      if (n === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  };
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = 'rgba(255,60,10,0.85)'; ctx.lineWidth = 1.5; trazar(0, ondulacion * 0.5);
+  ctx.strokeStyle = '#ff9a2e'; ctx.lineWidth = 0.9; trazar(1.7, ondulacion * 0.4);
+  ctx.strokeStyle = '#fff1b0'; ctx.lineWidth = 0.4; trazar(3.4, ondulacion * 0.3);
+
+  // Brillo del ancla: crece con el calor (hielo) o con el tiempo que lleva agarrada
+  const tipo = material[ancla.indice];
+  const progreso = tipo === HIELO
+    ? limitar((temperatura[ancla.indice] - PARAMETROS.temperaturaAmbiente) / (PARAMETROS.temperaturaFusion - PARAMETROS.temperaturaAmbiente), 0, 1)
+    : 1 - ancla.tiempo / ancla.tiempoTotal;
+  ctx.globalCompositeOperation = 'lighter';
+  dibujarHalo(finX, finY, 4 + 5 * progreso, '255,140,40', 0.35 + 0.55 * progreso);
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+/* Con la lengua elegida (y sin estar colgada) la mira es una línea punteada hasta
+   donde se engancharía: un anillo blanco si hay algo agarrable al alcance, o una
+   "×" gris donde termina el alcance si no. Gris apagado mientras se recarga. */
+function dibujarMiraDeLengua(llama) {
+  if (llama.ancla) return; // colgada: se ve la cuerda
+  const mano = manoDeLaLlama(llama);
+  const resultado = buscarAnclaDeLengua(llama);
+  const enRecarga = llama.recargaLengua > 0;
+  ctx.setLineDash([1.2, 1.6]);
+  ctx.lineWidth = 0.35;
+  ctx.strokeStyle = enRecarga ? 'rgba(200,210,225,0.35)' : 'rgba(255,200,120,0.75)';
+  ctx.beginPath();
+  ctx.moveTo(mano.x, mano.y);
+  ctx.lineTo(resultado.x, resultado.y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  if (resultado.falla) {
+    ctx.strokeStyle = 'rgba(160,170,185,0.6)';
+    ctx.beginPath();
+    ctx.moveTo(resultado.x - 1.1, resultado.y - 1.1); ctx.lineTo(resultado.x + 1.1, resultado.y + 1.1);
+    ctx.moveTo(resultado.x + 1.1, resultado.y - 1.1); ctx.lineTo(resultado.x - 1.1, resultado.y + 1.1);
+    ctx.stroke();
+  } else {
+    ctx.strokeStyle = enRecarga ? 'rgba(200,210,225,0.5)' : '#ffffff';
+    ctx.lineWidth = 0.45;
+    ctx.beginPath(); ctx.arc(resultado.x, resultado.y, 1.8, 0, Math.PI * 2); ctx.stroke();
+  }
+}
+
+/* Mortero: mientras se carga, una parábola punteada muestra por dónde saldría la
+   llama (sin viento: el viento no empuja a las llamas). Termina donde choca. */
+function dibujarTrayectoriaDeMortero(llama) {
+  const anguloRadianes = llama.angulo * Math.PI / 180;
+  const rapidez = PARAMETROS.morteroVelocidad * (POTENCIA_MINIMA + (1 - POTENCIA_MINIMA) * llama.potencia);
+  let x = llama.centroX, y = llama.centroY;
+  let velocidadX = Math.cos(anguloRadianes) * llama.mirando * rapidez, velocidadY = -Math.sin(anguloRadianes) * rapidez;
+  const dt = 1 / 30;
+  ctx.fillStyle = 'rgba(255,200,120,0.85)';
+  for (let paso = 0; paso < 150; paso++) {
+    velocidadY += PARAMETROS.gravedad * dt;
+    x += velocidadX * dt; y += velocidadY * dt;
+    const columna = Math.floor(x), fila = Math.floor(y);
+    if (columna < 0 || columna >= ANCHO_GRILLA || fila >= ALTO_GRILLA) break;
+    if (fila >= 0 && esSolidoParaLlama(material[fila * ANCHO_GRILLA + columna])) break;
+    if (paso % 2 === 0) { ctx.beginPath(); ctx.arc(x, y, 0.4, 0, Math.PI * 2); ctx.fill(); }
+  }
+}
+
+/* Jetpack: una flecha punteada hacia donde empujaría y la barra de combustible sobre la llama. */
+function dibujarMiraDeJetpack(llama) {
+  const anguloRadianes = llama.angulo * Math.PI / 180;
+  const direccionX = Math.cos(anguloRadianes) * llama.mirando, direccionY = -Math.sin(anguloRadianes);
+  const origenX = llama.centroX, origenY = llama.centroY - 1;
+
+  ctx.fillStyle = llama.combustible > 0 ? 'rgba(255,255,255,0.75)' : 'rgba(200,210,225,0.3)';
+  for (let d = 5; d <= 10; d += 2.2) {
+    ctx.beginPath(); ctx.arc(origenX + direccionX * d, origenY + direccionY * d, 0.35, 0, Math.PI * 2); ctx.fill();
+  }
+  // Punta de flecha
+  const puntaX = origenX + direccionX * 13, puntaY = origenY + direccionY * 13;
+  ctx.strokeStyle = llama.paleta.hud; ctx.lineWidth = 0.5; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(puntaX - direccionX * 2.2 - direccionY * 1.4, puntaY - direccionY * 2.2 + direccionX * 1.4);
+  ctx.lineTo(puntaX, puntaY);
+  ctx.lineTo(puntaX - direccionX * 2.2 + direccionY * 1.4, puntaY - direccionY * 2.2 - direccionX * 1.4);
+  ctx.stroke();
+
+  const anchoBarra = 10, xBarra = llama.centroX - anchoBarra / 2, yBarra = llama.y - 5.5;
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(xBarra, yBarra, anchoBarra, 1.4);
+  const degrade = ctx.createLinearGradient(xBarra, 0, xBarra + anchoBarra, 0);
+  degrade.addColorStop(0, '#ff3b1f');
+  degrade.addColorStop(1, '#ffe066');
+  ctx.fillStyle = llama.combustible > 0.15 ? degrade : '#ff3b1f';
+  ctx.fillRect(xBarra, yBarra, anchoBarra * llama.combustible, 1.4);
+}
+
+/* Tres estrellitas que giran sobre la cabeza de una llama aturdida. */
+function dibujarEstrellasDeAturdimiento(llama) {
+  ctx.fillStyle = '#ffe066';
+  for (let n = 0; n < 3; n++) {
+    const angulo = tiempoTotal * 7 + n * Math.PI * 2 / 3;
+    const x = llama.centroX + Math.cos(angulo) * 3.2, y = llama.y - 2.5 + Math.sin(angulo) * 1.1;
+    ctx.beginPath();
+    for (let punta = 0; punta < 10; punta++) {
+      const radio = punta % 2 === 0 ? 0.9 : 0.4, direccion = punta * Math.PI / 5 - Math.PI / 2;
+      const px = x + Math.cos(direccion) * radio, py = y + Math.sin(direccion) * radio;
+      if (punta === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
   }
 }
 

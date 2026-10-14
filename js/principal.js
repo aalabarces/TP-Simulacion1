@@ -65,6 +65,8 @@ function cuadro(instante) {
   if (pasosHechos === MAXIMO_PASOS_POR_CUADRO) tiempoAcumulado = 0; // descartar el atraso
   const finSimulacion = performance.now();
 
+  leerCamaraManual(transcurrido);
+  actualizarCamara(transcurrido);
   dibujarCuadro();
   actualizarSonidos(); // carga, ambientes y sonidos acumulados del cuadro (ver sonido.js)
   const finDibujo = performance.now();
