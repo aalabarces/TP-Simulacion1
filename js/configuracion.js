@@ -4,10 +4,12 @@
    Todas las constantes del juego en un solo lugar.
    ============================================================================= */
 
-/* Número de versión: se suma 1 en cada push a master. Se ve en el panel de
-   debug (P) y en la esquina de la pantalla de título, así se puede comprobar
-   (por ejemplo en el celular, con GitHub Pages) qué versión se está ejecutando. */
-const VERSION = 1;
+/* Número de versión: se suma 0.01 en cada push a master (0.01, 0.02, 0.03...).
+   Se guarda como texto para que no aparezcan errores de redondeo de los números
+   decimales. Se ve en el panel de debug (P) y en la esquina de la pantalla de
+   título, así se puede comprobar (por ejemplo en el celular, con GitHub Pages)
+   qué versión se está ejecutando. */
+const VERSION = '0.01';
 
 /* ---------- Tamaño del mundo ----------
    El mundo es una grilla de 320 x 540 celdas: alto y angosto, mucho más grande
