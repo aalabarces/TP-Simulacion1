@@ -80,6 +80,7 @@ function construirSliders() {
 
 function actualizarEstadisticas(estadisticas) {
   textoEstadisticas.textContent =
+    `versión     v${VERSION}\n` +
     `FPS         ${estadisticas.fps.toFixed(0)}\n` +
     `simulación  ${estadisticas.msSimulacion.toFixed(2)} ms/paso\n` +
     `dibujo      ${estadisticas.msDibujo.toFixed(2)} ms\n` +
@@ -97,3 +98,4 @@ function actualizarEstadisticas(estadisticas) {
 
 construirLeyenda();
 construirSliders();
+document.getElementById('version-debug').textContent = `v${VERSION}`;

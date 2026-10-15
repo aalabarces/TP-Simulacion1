@@ -44,6 +44,13 @@ function dibujarHud(anchoPantalla, altoPantalla, unidad) {
   if (juego.cartel && juego.pantalla === 'jugando') dibujarCartel(anchoPantalla, altoPantalla, unidad);
   if (vista.grilla) dibujarContadorDeFps(unidad);
   if (juego.pantalla === 'titulo' || juego.pantalla === 'fin') dibujarPantallaSuperpuesta(anchoPantalla, altoPantalla, unidad);
+  if (juego.pantalla === 'titulo') {
+    // Número de versión (ver configuracion.js), abajo a la derecha
+    ctx.textAlign = 'right';
+    ctx.font = fuente(unidad, 1.1);
+    ctx.fillStyle = 'rgba(200,215,235,0.5)';
+    ctx.fillText(`v${VERSION}`, anchoPantalla - 1.2 * unidad, altoPantalla - 1.2 * unidad);
+  }
 }
 
 /* Contador de FPS (solo con la vista de grilla, tecla 9), arriba a la izquierda,
