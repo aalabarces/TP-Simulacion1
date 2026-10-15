@@ -462,8 +462,9 @@ function aplicarEmpujeDeJetpack(llama, dt) {
 /* ---------- Bate de béisbol ----------
    Como en Worms: no se carga, se apunta y se batea. Golpea a TODAS las llamas que
    estén al alcance delante de la llama (rivales o del mismo equipo) y las manda a
-   volar en la dirección de la mira a PARAMETROS.bateVelocidad celdas/s, con un
-   poco de daño. La llama bateada vuela como lanzada por el mortero (rápido y con
+   volar en la dirección de la mira, con un poco de daño. La velocidad depende de
+   cuánta vida les queda: una llama sana casi no se mueve de su lugar y una muy
+   herida sale disparada (entre bateVelocidadMinima y bateVelocidad celdas/s). La llama bateada vuela como lanzada por el mortero (rápido y con
    estela de fuego) hasta aterrizar. Batear cuenta como el disparo del turno (ver
    alBatear en turnos.js), le pegue a alguien o no. */
 const DURACION_BATAZO = 0.3; // segundos de la animación del golpe
@@ -483,15 +484,20 @@ function batear(llama) {
   });
   for (const otra of bateadas) {
     soltarLengua(otra);
-    otra.velocidadX = direccionX * PARAMETROS.bateVelocidad;
-    otra.velocidadY = direccionY * PARAMETROS.bateVelocidad;
+    aplicarDanio(otra, PARAMETROS.bateDanio);
+    // Como en Smash Bros: cuanto más herida está, más lejos sale volando. Con la vida
+    // llena sale a bateVelocidadMinima (queda cerca) y sin vida, a bateVelocidad:
+    // el bate sirve para rematar, no para abrir la partida.
+    const herida = 1 - Math.max(0, otra.vida) / VIDA_MAXIMA; // 0 = sana, 1 = sin vida
+    const rapidez = PARAMETROS.bateVelocidadMinima + (PARAMETROS.bateVelocidad - PARAMETROS.bateVelocidadMinima) * herida;
+    otra.velocidadX = direccionX * rapidez;
+    otra.velocidadY = direccionY * rapidez;
     otra.enSuelo = false;
     otra.lanzada = true;   // vuela rápido y con estela, como con el mortero
     otra.tiempoLanzada = 0;
     otra.aturdida = 0;
     otra.cargando = false;
     otra.potencia = 0;
-    aplicarDanio(otra, PARAMETROS.bateDanio);
     const golpeX = (llama.centroX + otra.centroX) / 2, golpeY = (llama.centroY + otra.centroY) / 2;
     crearChispas(golpeX, golpeY, 30, '255,240,190');
     crearDestello(golpeX, golpeY, 7, 0.25, '255,230,160');

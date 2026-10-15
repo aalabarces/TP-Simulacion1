@@ -42,7 +42,8 @@ const juego = {
   llamaBateada: null,    // por turnos: la llama que mandó a volar el bate (la sigue la cámara)
   cartel: null,          // mensaje grande en el centro: { texto, color, edad }
   temblor: 0,            // segundos de sacudida de cámara
-  textoGanador: ''
+  textoGanador: '',
+  detalleFin: ''         // segunda línea de la pantalla de fin (por ejemplo, por qué fue empate)
 };
 
 let viento = 0;          // entre -vientoMaximo (izquierda) y +vientoMaximo (derecha)
@@ -200,9 +201,8 @@ function terminarPartidaSiCorresponde() {
   const enJuego = equiposEnJuego();
   if (enJuego.length >= 2) return false;
   juego.pantalla = 'fin';
-  juego.textoGanador = enJuego.length === 1
-    ? `¡Gana ${PALETAS_JUGADORES[enJuego[0]].nombre}!`
-    : '¡Empate! Se apagaron todas las llamas';
+  juego.textoGanador = enJuego.length === 1 ? `¡Gana ${PALETAS_JUGADORES[enJuego[0]].nombre}!` : '¡Empate!';
+  juego.detalleFin = enJuego.length === 1 ? '' : 'Se apagaron todas las llamas';
   sonarVictoria();
   return true;
 }

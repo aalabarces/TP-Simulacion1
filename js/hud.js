@@ -471,10 +471,20 @@ function dibujarPantallaSuperpuesta(anchoPantalla, altoPantalla, unidad) {
     ctx.font = `${interlineado * 0.66}px system-ui,sans-serif`;
     lineasAyuda.forEach((linea, n) => ctx.fillText(linea, anchoPantalla / 2, yAyuda + n * interlineado));
   } else {
+    // Si el texto no entra a lo ancho (ventana angosta), se achica la letra
+    const anchoTexto = ctx.measureText(juego.textoGanador).width;
+    if (anchoTexto > anchoPantalla * 0.92) ctx.font = fuente(unidad, 8 * anchoPantalla * 0.92 / anchoTexto, 900);
     ctx.fillText(juego.textoGanador, anchoPantalla / 2, altoPantalla * 0.42);
+    let yDetalle = altoPantalla * 0.42 + 3.5 * unidad;
+    if (juego.detalleFin) {
+      ctx.fillStyle = '#cfe0f5';
+      ctx.font = fuente(unidad, 2.2, 600);
+      ctx.fillText(juego.detalleFin, anchoPantalla / 2, yDetalle);
+      yDetalle += 3 * unidad;
+    }
     ctx.fillStyle = '#9fb2cc';
     ctx.font = fuente(unidad, 1.5);
-    ctx.fillText(`Modo ${MODOS_DE_JUEGO[juego.modo].nombre}`, anchoPantalla / 2, altoPantalla * 0.42 + 3.5 * unidad);
+    ctx.fillText(`Modo ${MODOS_DE_JUEGO[juego.modo].nombre}`, anchoPantalla / 2, yDetalle);
   }
 
   // En el celular, Empezar / Revancha / Menú son botones (index.html)

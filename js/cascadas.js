@@ -98,7 +98,6 @@ function crearGotaDeCascada(x, velocidadX, masa) {
     masa,
     celdaOrigen: -1,          // no nació de una celda de la grilla
     grados: TEMPERATURA_AGUA_CASCADA,
-    llamasGolpeadas: 0,
     deCascada: true           // sin viento y no cuenta para "asentando" (ver turnos.js)
   });
 }

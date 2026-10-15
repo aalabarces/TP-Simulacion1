@@ -9,7 +9,7 @@
    decimales. Se ve en el panel de debug (P) y en la esquina de la pantalla de
    título, así se puede comprobar (por ejemplo en el celular, con GitHub Pages)
    qué versión se está ejecutando. */
-const VERSION = '0.07';
+const VERSION = '0.08';
 
 /* ---------- Tamaño del mundo ----------
    El mundo es una grilla de 384 x 540 celdas: alto y angosto, mucho más grande
@@ -112,7 +112,8 @@ const PARAMETROS = {
   jetpackRecargaTiempoReal: 0.15, // tiempo real: fracción del tanque por segundo, apoyada en el suelo
 
   // Bate de béisbol (ver llama.js)
-  bateVelocidad: 110,             // celdas/s con las que sale volando la llama bateada (el tope de vuelo es 120)
+  bateVelocidad: 110,             // celdas/s con las que sale volando una llama SIN vida (el tope de vuelo es 120)
+  bateVelocidadMinima: 45,        // celdas/s con las que sale volando una llama con la vida llena
   bateAlcance: 9,                 // distancia máxima (entre centros) para alcanzar a otra llama
   bateDanio: 10,                  // HP que saca el golpe
 
@@ -174,7 +175,8 @@ const SLIDERS_DEBUG = [
   ['jetpackConsumo', 'Consumo (tanque/s)', 0.05, 1.5, 0.01],
   ['jetpackRecargaTiempoReal', 'Recarga tiempo real (tanque/s)', 0, 1, 0.01],
   ['Bate'],
-  ['bateVelocidad', 'Velocidad del batazo', 30, 120, 1],
+  ['bateVelocidad', 'Velocidad a una llama sin vida', 30, 120, 1],
+  ['bateVelocidadMinima', 'Velocidad a una llama sana', 0, 120, 1],
   ['bateAlcance', 'Alcance', 4, 20, 0.5],
   ['bateDanio', 'Daño', 0, 50, 1],
   ['Caídas'],

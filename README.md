@@ -124,8 +124,10 @@ aprieta algún botón con la página abierta.
 
 Segunda arma, al estilo Worms. **No se carga:** se apunta con W / S y al apretar
 disparar la llama batea. Manda a volar a **todas las llamas que tenga delante**
-(a 9 celdas o menos, rivales o propias) en la dirección de la mira, a 110
-celdas/s, y les saca 10 HP. Suena el "¡crack!", el órgano del estadio y la
+(a 9 celdas o menos, rivales o propias) en la dirección de la mira y les saca
+10 HP. **Cuanto más herida está la llama, más lejos vuela** (como en Smash Bros):
+con la vida llena sale a 45 celdas/s y casi no se mueve de su lugar; sin vida, a
+110 celdas/s. Sirve para rematar, no para abrir la partida. Suena el "¡crack!", el órgano del estadio y la
 tribuna: **¡HOME RUN!**
 
 - Batear **termina el turno** (le pegues o no), como un disparo: quedan los

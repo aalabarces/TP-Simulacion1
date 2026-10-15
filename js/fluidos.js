@@ -131,8 +131,7 @@ function convertirEnParticula(x, y, indice, pasoActual) {
         velocidadY: 2,
         masa,
         celdaOrigen: indice,                      // ver la reserva al inicio de simularFluidos
-        grados: temperatura[indice],
-        llamasGolpeadas: 0                        // máscara de bits: a qué llamas ya mojó
+        grados: temperatura[indice]
       });
     }
     material[indice] = AIRE;

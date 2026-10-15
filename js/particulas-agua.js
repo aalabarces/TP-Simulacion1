@@ -28,9 +28,9 @@ function simularParticulasAgua(dt) {
     gota.velocidadX *= ROZAMIENTO_AIRE_AGUA;
     if (gota.velocidadY > VELOCIDAD_MAXIMA_CAIDA_AGUA) gota.velocidadY = VELOCIDAD_MAXIMA_CAIDA_AGUA;
 
-    const sigueViva = moverGota(gota, dt);
-    if (sigueViva) mojarLlamas(gota);
-    else {
+    // La gota deja de existir si chocó (vuelve a la grilla) o si tocó una llama (se evaporó)
+    const sigueViva = moverGota(gota, dt) && !mojarLlamas(gota);
+    if (!sigueViva) {
       // Borrado rápido: se pisa con la última y se achica el arreglo
       particulasAgua[n] = particulasAgua[particulasAgua.length - 1];
       particulasAgua.pop();
@@ -102,25 +102,23 @@ function devolverAGrilla(gota) {
   }
 }
 
-/* Si la gota está dentro del hitbox de una llama: le hace daño y la empuja.
-   Cada gota daña una sola vez a cada llama: se marca con un bit por llama
-   (bit 0 = llama 0, bit 1 = llama 1...; alcanza para hasta 32 llamas). */
+/* Si la gota está dentro del hitbox de una llama: le hace daño, la empuja y SE
+   EVAPORA (el fuego la convierte en vapor). Así cada gota daña una sola vez: sin
+   esto seguiría cayendo, se juntaría en un charco alrededor de la llama y la
+   seguiría mojando hasta apagarla. Devuelve true si la gota se evaporó. */
 function mojarLlamas(gota) {
   for (const llama of llamas) {
     if (!llama.vivo) continue;
-    const bitDeLaLlama = 1 << llama.numero;
-    if (gota.llamasGolpeadas & bitDeLaLlama) continue;
-
     const adentro = gota.x >= llama.x && gota.x <= llama.x + llama.ancho
                  && gota.y >= llama.y && gota.y <= llama.y + llama.alto;
     if (!adentro) continue;
 
-    gota.llamasGolpeadas |= bitDeLaLlama;
     aplicarDanio(llama, PARAMETROS.danioPorGota * gota.masa); // una gota con menos agua moja menos
     // Transferencia de impulso: la gota empuja a la llama en su dirección
     llama.velocidadX += gota.velocidadX * 0.05;
     llama.velocidadY += gota.velocidadY * 0.02;
-    gota.velocidadX *= 0.5;
-    if (Math.random() < 0.3) crearVapor(gota.x, gota.y, 1);
+    crearVapor(gota.x, gota.y, 1); // nubecita y siseo
+    return true;
   }
+  return false;
 }

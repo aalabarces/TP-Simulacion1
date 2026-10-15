@@ -20,9 +20,9 @@
         distintas alturas. Romper la pared de un cuenco suelta su agua hacia
         abajo; rellenarla con magma la desvía.
      4. ARENA: una plataforma por llama, la mitad de cada lado, a distintas
-        alturas y con algún puente (y pozos) suelto. Encima de cada una, un
-        TECHO DE ROCA más chico que protege a la llama del agua que cae (se
-        puede romper con la bola de fuego).
+        alturas y con algún puente (y pozos) suelto. Bordes en rampa de roca y
+        estalactitas abajo. Encima de cada una, un CUENCO CHICO VACÍO que protege
+        a la llama del agua que cae (se puede romper con la bola de fuego).
      5. ZONA BAJA: más cuencos con agua y piedras chicas flotando, que con
         suerte frenan una caída.
      6. Lago de agua "termal" en el fondo (caer ahí es ahogarse); sube con las
@@ -359,13 +359,66 @@ function generarPlataformas(semilla, cantidadPlataformas, aleatorioEntre, entero
       const filaAbajo = plataforma.filaSuperior + plataforma.grosorHielo + 2 + Math.round(plataforma.profundidad * Math.pow(1 - u * u, 0.7));
 
       for (let y = filaArriba; y <= filaAbajo; y++) {
-        // Piedra adentro, hielo en la cáscara exterior (arriba, abajo y los bordes)
-        const esNucleo = y >= filaArriba + plataforma.grosorHielo && y <= filaAbajo - 2 && distanciaAlCentro < 0.86;
-        pintarSimetrico(x, y, esNucleo ? PIEDRA : HIELO, PARAMETROS.temperaturaAmbiente);
+        // Hielo solo en la capa de arriba (el piso); el resto, hasta la base, es piedra
+        const esPiso = y < filaArriba + plataforma.grosorHielo;
+        pintarSimetrico(x, y, esPiso ? HIELO : PIEDRA, PARAMETROS.temperaturaAmbiente);
       }
+    }
+    pintarBordesDePlataforma(plataforma);
+    // Unas pocas estalactitas de hielo colgando de la base (simétricas, como la plataforma)
+    const cantidad = enteroEntre(2, 4);
+    for (let n = 0; n < cantidad; n++) {
+      const u = aleatorioEntre(-0.6, 0.6);
+      const x = Math.round(plataforma.centroX + u * plataforma.radioX);
+      if (x < 0 || x >= MITAD_ANCHO) continue;
+      const filaBase = plataforma.filaSuperior + plataforma.grosorHielo + 2 + Math.round(plataforma.profundidad * Math.pow(1 - u * u, 0.7));
+      pintarEstalactita(x, filaBase + 1, enteroEntre(3, 7), aleatorioEntre(1.2, 2.4), true);
     }
   }
   return plataformas;
+}
+
+/* Estalactita de hielo: un triángulo que cuelga desde la fila "filaBase" (la base de
+   la estructura) hacia abajo y se afina hasta la punta. Solo rellena aire. Con
+   "simetrica" se pinta también en espejo (para las plataformas de arranque). */
+function pintarEstalactita(x0, filaBase, largo, anchoBase, simetrica) {
+  for (let k = 0; k < largo; k++) {
+    const medioAncho = anchoBase * (1 - k / largo);
+    for (let x = Math.round(x0 - medioAncho); x <= Math.round(x0 + medioAncho); x++) {
+      const y = filaBase + k;
+      if (!estaDentroDeLaGrilla(x, y) || material[indiceDeCelda(x, y)] !== AIRE) continue;
+      if (simetrica) pintarSimetrico(x, y, HIELO, PARAMETROS.temperaturaAmbiente);
+      else pintar(x, y, HIELO, PARAMETROS.temperaturaAmbiente);
+    }
+  }
+}
+
+/* Bordes en rampa de cada plataforma de arranque: hacia las dos puntas, la
+   superficie sube suavemente hasta ALTURA_RAMPA celdas y es de PIEDRA (la misma
+   roca del núcleo). El piso del centro es de hielo y resbala: sin los bordes, una
+   llama empujada (por ejemplo, por el bate) se deslizaría hasta caerse. La rampa la
+   frena dos veces: sube, y la piedra tiene mucha más fricción que el hielo.
+   Se puede subir caminando (crece menos de 1 celda por columna).
+   La forma es una curva "smoothstep" (3t² - 2t³): arranca plana, sin escalón, y
+   termina plana arriba. */
+const ALTURA_RAMPA = 4;
+const RAMPA_DESDE = 0.55; // dónde empieza a subir, en fracción del radio (en 1 está la punta)
+
+function pintarBordesDePlataforma(plataforma) {
+  const ambiente = PARAMETROS.temperaturaAmbiente;
+  for (let x = Math.floor(plataforma.centroX - plataforma.radioX); x <= Math.ceil(plataforma.centroX + plataforma.radioX); x++) {
+    if (x < 0 || x >= MITAD_ANCHO) continue;
+    const distanciaAlCentro = Math.abs((x - plataforma.centroX) / plataforma.radioX);
+    if (distanciaAlCentro < RAMPA_DESDE || distanciaAlCentro > 1) continue;
+    const t = Math.min(1, (distanciaAlCentro - RAMPA_DESDE) / (0.95 - RAMPA_DESDE));
+    const altura = Math.round(ALTURA_RAMPA * (3 * t * t - 2 * t * t * t));
+    // Desde la superficie de la rampa hasta debajo de la capa de hielo (que en las puntas
+    // está hasta 4 filas más abajo): todo piedra, sin pasarse de la base de la plataforma
+    const u = (x - plataforma.centroX) / plataforma.radioX;
+    const filaBase = plataforma.filaSuperior + plataforma.grosorHielo + 2 + Math.round(plataforma.profundidad * Math.pow(1 - u * u, 0.7));
+    const filaFondo = Math.min(filaBase, plataforma.filaSuperior + 5 + plataforma.grosorHielo);
+    for (let y = plataforma.filaSuperior - altura; y <= filaFondo; y++) pintarSimetrico(x, y, PIEDRA, ambiente);
+  }
 }
 
 /* ---------- Puentes de hielo con pozos ----------
@@ -544,12 +597,24 @@ function colocarCuenco(centroX, filaBorde, mitadAncho, profundidad, llenado, ale
         if (py >= filaSuperficie) pintar(x, y, AGUA, gradosAgua);
         continue;
       }
-      // Pared: hielo en la capa exterior (distancia radial normalizada cerca de 1), piedra por dentro
+      // Pared: piedra, con una capa de hielo por fuera solo en la mitad de ARRIBA
+      // (la parte de abajo es roca pelada, con alguna estalactita colgando)
       const vExterior = (py - filaBorde) / (profundidad + grosor);
       const radio = Math.pow(Math.pow(Math.abs(uExterior), FORMA_U) + Math.pow(vExterior, FORMA_U), 1 / FORMA_U);
       const capaDeHielo = 1.5 / Math.min(mitadAncho + grosor, profundidad + grosor);
-      pintar(x, y, radio > 1 - capaDeHielo ? HIELO : PIEDRA, ambiente);
+      const esHielo = radio > 1 - capaDeHielo && vExterior < 0.5;
+      pintar(x, y, esHielo ? HIELO : PIEDRA, ambiente);
     }
+  }
+  // 0 a 2 estalactitas en el fondo
+  const cantidadEstalactitas = Math.floor(aleatorioEntre(0, 3));
+  for (let n = 0; n < cantidadEstalactitas; n++) {
+    const u = aleatorioEntre(-0.6, 0.6);
+    const x = Math.round(centroX + u * mitadAncho);
+    // Primera fila de aire debajo del cuenco en esa columna (subiendo desde abajo)
+    let filaDebajo = y1 + 1;
+    while (filaDebajo > filaBorde && material[indiceDeCelda(x, filaDebajo - 1)] === AIRE) filaDebajo--;
+    pintarEstalactita(x, filaDebajo, Math.floor(aleatorioEntre(2, 5)), aleatorioEntre(1, 1.8), false);
   }
   return true;
 }
@@ -589,27 +654,44 @@ function sortearCuenco(aleatorioEntre, enteroEntre) {
   return { mitadAncho, profundidad };
 }
 
-/* ---------- Techos de roca sobre las llamas ----------
-   Encima de cada plataforma de arranque, una losa de roca (piedra) más chica que
-   la plataforma: protege a la llama del agua que cae desde arriba. Entre las dos
-   quedan ALTURA_BAJO_TECHO filas de aire para saltar, apuntar y moverse. Se pinta
-   con pintarSimetrico, así el techo de la plataforma espejada es idéntico. */
-const ALTURA_BAJO_TECHO = 22;            // filas de aire entre la plataforma y el techo
-const PROPORCION_ANCHO_TECHO = 0.6;      // el techo mide el 60% del ancho de la plataforma
+/* ---------- Techos sobre las llamas: un cuenco chico vacío ----------
+   Encima de cada plataforma de arranque hay un cuenco en U, como los del agua pero
+   más chico y VACÍO: protege a la llama del agua que cae desde arriba (la junta
+   hasta llenarse y recién ahí desborda por los costados). Entre la plataforma y
+   el fondo del cuenco quedan ALTURA_BAJO_TECHO filas de aire para saltar, apuntar
+   y moverse. Se pinta con pintarSimetrico: el de la plataforma espejada es idéntico. */
+const ALTURA_BAJO_TECHO = 22;            // filas de aire entre la plataforma y el fondo del cuenco
+const PROPORCION_ANCHO_TECHO = 0.45;     // el cuenco mide el 45% del ancho de la plataforma
 
 function generarTechosDeRoca(plataformas, enteroEntre) {
   const ambiente = PARAMETROS.temperaturaAmbiente;
+  const grosor = 3;
   for (const plataforma of plataformas) {
-    const radioX = Math.max(6, plataforma.radioX * PROPORCION_ANCHO_TECHO);
-    const grosor = enteroEntre(4, 6);
-    const filaInferior = plataforma.filaSuperior - ALTURA_BAJO_TECHO; // borde de abajo del techo
-    for (let x = Math.floor(plataforma.centroX - radioX); x <= Math.ceil(plataforma.centroX + radioX); x++) {
-      if (x < 0 || x >= MITAD_ANCHO) continue;
-      const u = (x - plataforma.centroX) / radioX; // -1..1 a lo ancho del techo
-      if (Math.abs(u) > 1) continue;
-      // Abajo plano; arriba bombeado (más grueso en el centro, se afina hacia las puntas)
-      const filaArriba = filaInferior - Math.round(grosor * Math.pow(1 - u * u, 0.5));
-      for (let y = filaArriba; y <= filaInferior; y++) pintarSimetrico(x, y, PIEDRA, ambiente);
+    const mitadAncho = Math.max(5, Math.round(plataforma.radioX * PROPORCION_ANCHO_TECHO));
+    const profundidad = enteroEntre(5, 7);
+    const filaFondo = plataforma.filaSuperior - ALTURA_BAJO_TECHO;     // parte de abajo del cuenco
+    const filaBorde = filaFondo - profundidad - grosor;                // borde de arriba
+    const centroX = plataforma.centroX;
+    // Misma forma que colocarCuenco: superelipse exterior menos la cavidad interior
+    for (let y = filaBorde; y <= filaFondo; y++) {
+      for (let x = Math.floor(centroX - mitadAncho - grosor); x <= Math.ceil(centroX + mitadAncho + grosor); x++) {
+        if (x < 0 || x >= MITAD_ANCHO) continue;
+        const px = x + 0.5, py = y + 0.5;
+        const uExterior = (px - centroX) / (mitadAncho + grosor);
+        if (Math.abs(uExterior) >= 1) continue;
+        const fondoExterior = filaBorde + (profundidad + grosor) * Math.pow(1 - Math.pow(Math.abs(uExterior), FORMA_U), 1 / FORMA_U);
+        if (py > fondoExterior) continue;
+        const uInterior = (px - centroX) / mitadAncho;
+        if (Math.abs(uInterior) < 1) {
+          const fondoInterior = filaBorde + profundidad * Math.pow(1 - Math.pow(Math.abs(uInterior), FORMA_U), 1 / FORMA_U);
+          if (py < fondoInterior) continue; // la cavidad queda vacía
+        }
+        // Roca, con hielo afuera solo en la mitad de arriba (como los cuencos con agua)
+        const vExterior = (py - filaBorde) / (profundidad + grosor);
+        const radio = Math.pow(Math.pow(Math.abs(uExterior), FORMA_U) + Math.pow(vExterior, FORMA_U), 1 / FORMA_U);
+        const esHielo = radio > 1 - 1.5 / Math.min(mitadAncho + grosor, profundidad + grosor) && vExterior < 0.5;
+        pintarSimetrico(x, y, esHielo ? HIELO : PIEDRA, ambiente);
+      }
     }
   }
 }
