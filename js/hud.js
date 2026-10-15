@@ -45,11 +45,16 @@ function dibujarHud(anchoPantalla, altoPantalla, unidad) {
   if (vista.grilla) dibujarContadorDeFps(unidad);
   if (juego.pantalla === 'titulo' || juego.pantalla === 'fin') dibujarPantallaSuperpuesta(anchoPantalla, altoPantalla, unidad);
   if (juego.pantalla === 'titulo') {
-    // Número de versión (ver configuracion.js), abajo a la derecha
+    // Número de versión (ver configuracion.js) y joysticks detectados, abajo a la derecha.
+    // Si el navegador todavía no "vio" el joystick, se avisa que hay que apretar un botón.
+    const joysticks = estadoJoysticks.length;
+    const textoJoystick = joysticks > 0
+      ? `🎮 ${joysticks} joystick${joysticks > 1 ? 's' : ''} detectado${joysticks > 1 ? 's' : ''}`
+      : '🎮 sin joystick (apretá un botón del joystick)';
     ctx.textAlign = 'right';
     ctx.font = fuente(unidad, 1.1);
-    ctx.fillStyle = 'rgba(200,215,235,0.5)';
-    ctx.fillText(`v${VERSION}`, anchoPantalla - 1.2 * unidad, altoPantalla - 1.2 * unidad);
+    ctx.fillStyle = joysticks > 0 ? 'rgba(125,255,154,0.8)' : 'rgba(200,215,235,0.5)';
+    ctx.fillText(`${textoJoystick}   ·   v${VERSION}`, anchoPantalla - 1.2 * unidad, altoPantalla - 1.2 * unidad);
   }
 }
 
