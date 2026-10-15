@@ -106,6 +106,12 @@ function liberarBotonesSoltados(joystick) {
   for (const i of [...ignorados]) if (!botonApretadoFisico(joystick, i)) ignorados.delete(i);
 }
 
+/* Joysticks ya vistos (por índice). El navegador recién muestra un joystick cuando
+   se aprieta un botón: ese primer botón solo sirve para "despertarlo" y se ignora
+   hasta soltarlo. Si no, apretar A o Start para que el juego lo reconozca
+   empezaría la partida. */
+const joysticksVistos = new Set();
+
 /* Se llama una vez por cuadro (principal.js): lee todos los joysticks y
    dispara las acciones de "un solo toque" (cambiar arma, empezar, etc.). */
 function actualizarJoysticks() {
@@ -113,6 +119,12 @@ function actualizarJoysticks() {
   const conectados = Array.from(navigator.getGamepads()).filter(j => j && j.connected);
 
   estadoJoysticks = conectados.map((joystick, numero) => {
+    if (!joysticksVistos.has(joystick.index)) {
+      joysticksVistos.add(joystick.index);
+      const apretados = new Set();
+      joystick.buttons.forEach((_, i) => { if (botonApretadoFisico(joystick, i)) apretados.add(i); });
+      botonesIgnoradosHastaSoltar[joystick.index] = apretados;
+    }
     liberarBotonesSoltados(joystick);
     const mapeo = mapeoDeEjes(joystick);
     const cruz = (botonApretado(joystick, BOTON.DERECHA) ? 1 : 0) - (botonApretado(joystick, BOTON.IZQUIERDA) ? 1 : 0);
@@ -168,6 +180,7 @@ window.addEventListener('gamepadconnected', evento => {
 });
 window.addEventListener('gamepaddisconnected', evento => {
   mapeosDeEjes.delete(evento.gamepad.index);
+  joysticksVistos.delete(evento.gamepad.index); // al reconectarlo, el primer botón vuelve a solo despertarlo
   mostrarCartel('🎮 Joystick desconectado', '#ffd38a');
 });
 

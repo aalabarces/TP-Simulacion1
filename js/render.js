@@ -346,6 +346,7 @@ function dibujarTodasLasLlamas() {
       dibujarLlama(ctx, llama.centroX, pies + 0.3, 0.82, llama.paleta, llama.vida / VIDA_MAXIMA,
                    tiempoTotal + llama.numero * 3, llama.mirando, llama.tiempoHerido > 0);
       if (llama.ancla) dibujarLengua(llama);
+      if (llama.arma === ARMA_BATE && (llama.tiempoBatazo > 0 || estaApuntando(llama))) dibujarBateDeLaLlama(llama);
       if (llama.aturdida > 0) dibujarEstrellasDeAturdimiento(llama);
       if (llama.curandose) {
         // "+" verde que sube en loop
@@ -396,11 +397,108 @@ function dibujarMiras() {
   }
 }
 
+/* ¿Esta llama está apuntando ahora? (la del turno en la fase 'apuntar', o cualquiera viva en tiempo real) */
+function estaApuntando(llama) {
+  if (juego.pantalla !== 'jugando' || !llama.vivo) return false;
+  if (esTiempoReal()) return true;
+  return juego.fase === 'apuntar' && llama.numero === juego.llamaActual;
+}
+
+/* Un bate de madera: desde el mango en (x, y) hacia "angulo" (radianes, en pantalla),
+   fino en el mango y grueso en la cabeza. "grosor" es el largo que tendría el bate
+   visto de costado: si "largo" es menor, el bate se ve en perspectiva (apuntando
+   hacia la pantalla o hacia el fondo) pero conserva su ancho. Lo usan la llama y
+   el ícono del HUD. */
+function dibujarBate(contexto, x, y, angulo, largo, grosor = largo) {
+  const dirX = Math.cos(angulo), dirY = Math.sin(angulo);
+  const normalX = -dirY, normalY = dirX;
+  // Contorno: [distancia sobre el bate (0 a 1), medio ancho (fracción del grosor)]
+  const perfil = [[0, 0.045], [0.08, 0.035], [0.45, 0.05], [0.85, 0.1], [1, 0.09]];
+  contexto.beginPath();
+  for (const [t, medio] of perfil) contexto.lineTo(x + dirX * largo * t + normalX * grosor * medio, y + dirY * largo * t + normalY * grosor * medio);
+  for (const [t, medio] of [...perfil].reverse()) contexto.lineTo(x + dirX * largo * t - normalX * grosor * medio, y + dirY * largo * t - normalY * grosor * medio);
+  contexto.closePath();
+  contexto.fillStyle = '#c99256';
+  contexto.fill();
+  contexto.strokeStyle = '#6e4521';
+  contexto.lineWidth = grosor * 0.03;
+  contexto.stroke();
+  // Punta redondeada (y, en perspectiva, la "tapa" de la cabeza del bate)
+  contexto.beginPath();
+  contexto.arc(x + dirX * largo, y + dirY * largo, grosor * 0.09, 0, Math.PI * 2);
+  contexto.fill();
+  contexto.stroke();
+  // Cinta del mango
+  contexto.strokeStyle = '#2b2b33';
+  contexto.lineWidth = grosor * 0.07;
+  contexto.beginPath();
+  contexto.moveTo(x, y);
+  contexto.lineTo(x + dirX * largo * 0.18, y + dirY * largo * 0.18);
+  contexto.stroke();
+}
+
+/* El bate en la mano de la llama. El golpe es HORIZONTAL, como un batazo de verdad
+   visto de costado: el bate gira en un plano que contiene la línea de la mira y la
+   profundidad de la pantalla. Quieto, apunta hacia ATRÁS sobre la línea de la mira;
+   al batear barre hacia adelante (pasa por delante de la llama, donde se ve corto
+   por la perspectiva) hasta apuntar hacia donde sale el golpe.
+   Si el bate gira un ángulo θ (π = atrás, 0 = adelante), lo que se ve de costado es
+   su proyección sobre la línea de la mira: largo × cos θ. */
+const LARGO_BATE = 7;
+function dibujarBateDeLaLlama(llama) {
+  const anguloMira = Math.atan2(-Math.sin(llama.angulo * Math.PI / 180), Math.cos(llama.angulo * Math.PI / 180) * llama.mirando);
+  let giro = Math.PI; // quieto: hacia atrás
+  if (llama.tiempoBatazo > 0) {
+    const progreso = 1 - llama.tiempoBatazo / DURACION_BATAZO;
+    const rapido = Math.min(1, progreso * 2.5);              // el golpe dura un instante...
+    giro = Math.PI * Math.pow(1 - rapido, 3);                 // ...y se frena al final
+  }
+  const proyeccion = Math.cos(giro); // -1 atrás, 0 de frente a la pantalla, +1 adelante
+  const angulo = proyeccion >= 0 ? anguloMira : anguloMira + Math.PI;
+  const mano = manoDeLaLlama(llama);
+  const origenX = mano.x, origenY = mano.y + 1;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  // Estela del golpe: una franja clara sobre la línea de la mira, de atrás hasta la punta
+  if (llama.tiempoBatazo > 0) {
+    const dirX = Math.cos(anguloMira), dirY = Math.sin(anguloMira);
+    const punta = LARGO_BATE * proyeccion;
+    ctx.strokeStyle = `rgba(255,245,210,${0.55 * llama.tiempoBatazo / DURACION_BATAZO})`;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(origenX - dirX * LARGO_BATE, origenY - dirY * LARGO_BATE);
+    ctx.lineTo(origenX + dirX * punta, origenY + dirY * punta);
+    ctx.stroke();
+  }
+  dibujarBate(ctx, origenX, origenY, angulo, LARGO_BATE * Math.abs(proyeccion), LARGO_BATE);
+}
+
+/* Mira del bate: una flecha corta hacia donde sale volando la llama golpeada. */
+function dibujarMiraDeBate(llama) {
+  const anguloRadianes = llama.angulo * Math.PI / 180;
+  const direccionX = Math.cos(anguloRadianes) * llama.mirando;
+  const direccionY = -Math.sin(anguloRadianes);
+  const origenX = llama.centroX, origenY = llama.centroY - 1;
+  ctx.fillStyle = llama.recarga > 0 ? 'rgba(160,170,185,0.5)' : 'rgba(255,255,255,0.75)';
+  for (let d = 9; d <= 15; d += 2) {
+    ctx.beginPath(); ctx.arc(origenX + direccionX * d, origenY + direccionY * d, 0.35, 0, Math.PI * 2); ctx.fill();
+  }
+  const puntaX = origenX + direccionX * 18, puntaY = origenY + direccionY * 18;
+  ctx.fillStyle = llama.paleta.hud;
+  ctx.beginPath();
+  ctx.moveTo(puntaX + direccionX * 1.6, puntaY + direccionY * 1.6);
+  ctx.lineTo(puntaX - direccionY * 1.2, puntaY + direccionX * 1.2);
+  ctx.lineTo(puntaX + direccionY * 1.2, puntaY - direccionX * 1.2);
+  ctx.closePath();
+  ctx.fill();
+}
+
 /* Mira: puntos en la dirección del ángulo, retícula a 17 celdas, barra de
    potencia mientras carga y, en tiempo real, barra gris de recarga. */
 function dibujarMira(llama) {
   if (llama.arma === ARMA_LENGUA) { dibujarMiraDeLengua(llama); return; }
   if (llama.arma === ARMA_JETPACK) { dibujarMiraDeJetpack(llama); return; }
+  if (llama.arma === ARMA_BATE) { dibujarMiraDeBate(llama); return; }
   if (llama.arma === ARMA_MORTERO && llama.cargando) dibujarTrayectoriaDeMortero(llama);
   const anguloRadianes = llama.angulo * Math.PI / 180;
   const direccionX = Math.cos(anguloRadianes) * llama.mirando;

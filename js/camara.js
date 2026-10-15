@@ -169,7 +169,9 @@ function objetivoAutomatico() {
 
   // Por turnos
   let foco = null;
-  if (juego.fase === 'vuelo' && proyectiles.length > 0) foco = proyectiles[0];
+  const bateada = juego.llamaBateada;
+  if (bateada && bateada.vivo && bateada.lanzada) foco = { x: bateada.centroX, y: bateada.centroY };
+  else if (juego.fase === 'vuelo' && proyectiles.length > 0) foco = proyectiles[0];
   else if (juego.fase === 'asentando' && camara.foco) foco = camara.foco;
   else {
     const llama = llamaActual();

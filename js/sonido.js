@@ -283,6 +283,64 @@ function sonarSoltarLengua() {
   tono('sine', 420, 200, t, 0.08).connect(envolvente(t, 0.1, 0.003, 0.08));
 }
 
+/* Bate: "fsst" del palo cortando el aire (ruido que barre de grave a agudo). */
+function sonarBatazo() {
+  if (!audioListo()) return;
+  const t = sonido.contexto.currentTime;
+  const filtro = crearFiltro('bandpass', 500, 2);
+  filtro.frequency.exponentialRampToValueAtTime(2500, t + 0.15);
+  fuenteDeRuido(t, 0.22).connect(filtro).connect(envolvente(t, 0.25, 0.04, 0.16));
+}
+
+/* ¡HOME RUN! Tres capas, como en la tele:
+   1. El "¡CRACK!" de la madera: un golpe de ruido muy corto y brillante más un
+      "toc" con tono (la madera resuena cerca de 1 kHz).
+   2. El órgano del estadio tocando el clásico "¡Charge!": Sol-Do-Mi-Sol... Mi-Sol.
+      Cada nota es una onda cuadrada (suena a órgano) más su octava, cortita.
+   3. La tribuna: ruido filtrado en la franja de las voces (500 a 2500 Hz) que crece,
+      ondula (miles de gritos que no van parejos) y se apaga despacio. */
+const ORGANO_HOME_RUN = [
+  // [frecuencia (Hz), comienzo (s), duración (s)]
+  [392, 0.25, 0.12], [523, 0.39, 0.12], [659, 0.53, 0.12], [784, 0.67, 0.28],
+  [659, 0.99, 0.12], [784, 1.13, 0.6]
+];
+
+function sonarHomeRun() {
+  if (!audioListo()) return;
+  const contexto = sonido.contexto;
+  const t = contexto.currentTime;
+
+  // 1. Crack
+  fuenteDeRuido(t, 0.08).connect(crearFiltro('highpass', 1800)).connect(envolvente(t, 0.9, 0.002, 0.07));
+  tono('triangle', 1100, 700, t, 0.12).connect(envolvente(t, 0.5, 0.002, 0.12));
+  tono('sine', 180, 90, t, 0.15).connect(envolvente(t, 0.4, 0.002, 0.15));
+
+  // 2. Órgano
+  for (const [frecuencia, comienzo, duracion] of ORGANO_HOME_RUN) {
+    const inicio = t + comienzo;
+    for (const [multiplicador, nivel] of [[1, 0.07], [2, 0.035]]) {
+      const nota = tono('square', frecuencia * multiplicador, frecuencia * multiplicador, inicio, duracion);
+      const filtro = crearFiltro('lowpass', 2400);
+      nota.connect(filtro).connect(envolvente(inicio, nivel, 0.01, duracion));
+    }
+  }
+
+  // 3. Tribuna
+  const duracionTribuna = 2.6;
+  const voces = crearFiltro('bandpass', 1100, 0.6);
+  const ondulacion = contexto.createGain();
+  ondulacion.gain.value = 0.75;
+  const variacion = contexto.createOscillator(); // la ovación sube y baja unas 3 veces por segundo
+  variacion.frequency.value = 3.3;
+  const anchoVariacion = contexto.createGain();
+  anchoVariacion.gain.value = 0.25;
+  variacion.connect(anchoVariacion).connect(ondulacion.gain);
+  variacion.start(t);
+  variacion.stop(t + duracionTribuna + 0.4);
+  fuenteDeRuido(t + 0.05, duracionTribuna + 0.3).connect(voces).connect(ondulacion)
+    .connect(envolvente(t + 0.05, 0.3, 0.5, duracionTribuna));
+}
+
 /* Golpe contra el suelo que aturde: más grave y largo cuanto más fuerte la caída (0 a 1). */
 function sonarAturdimiento(fuerza) {
   if (!audioListo()) return;

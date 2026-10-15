@@ -112,7 +112,7 @@ real). En los modos por turnos, el jugador activo puede usar cualquiera de los d
 | Saltar | Espacio | Shift derecho | A / ✕ |
 | Apuntar | W / S | ↑ / ↓ | Stick derecho o izquierdo ↑ ↓, o cruz ↑ ↓ |
 | Cargar y disparar (mantener) | F | Enter | Gatillo derecho (RT / R2) o B / ○ |
-| Arma anterior / siguiente (bola · magma · lengua · mortero · jetpack) | Q / E | , / . | LB / RB (L1 / R1) |
+| Arma anterior / siguiente (bola · bate · magma · lengua · mortero · jetpack) | Q / E | , / . | LB / RB (L1 / R1) |
 | Cambiar de llama (Worms) | Tab | Tab | Y / △ |
 | Volver al menú principal | Escape (o M) | Escape (o M) | ≡ (Start) o ⧉ (Back) |
 
@@ -120,9 +120,21 @@ Con joysticks, el primero que se conecta es de J1 y el segundo de J2 (en los
 modos por turnos alcanza con uno). El navegador los reconoce recién cuando se
 aprieta algún botón con la página abierta.
 
+### Bate de béisbol
+
+Segunda arma, al estilo Worms. **No se carga:** se apunta con W / S y al apretar
+disparar la llama batea. Manda a volar a **todas las llamas que tenga delante**
+(a 9 celdas o menos, rivales o propias) en la dirección de la mira, a 110
+celdas/s, y les saca 10 HP. Suena el "¡crack!", el órgano del estadio y la
+tribuna: **¡HOME RUN!**
+
+- Batear **termina el turno** (le pegues o no), como un disparo: quedan los
+  segundos de escape. La cámara sigue a la llama bateada hasta que aterriza.
+- En tiempo real tiene la misma recarga que un disparo.
+
 ### Lengua de fuego
 
-Tercera arma (la elegís con **Q / E**, junto a la bola de fuego y el magma). No
+Cuarta arma (la elegís con **Q / E**, después de la bola de fuego, el bate y el magma). No
 dispara: lanza una lengua de fuego en la dirección de la mira (alcance 70
 celdas) y, si toca hielo, piedra o roca volcánica, te dejás colgar de ella y te
 balanceás como en una soga.
@@ -138,24 +150,25 @@ balanceás como en una soga.
 - No termina el turno: podés reposicionarte y después disparar (bola de fuego o
   magma) con el resto del turno, incluso colgado.
 - **Caídas fuertes aturden:** si aterrizás a más de 55 celdas/s (caer unas 15
-  celdas) no podés controlar a la llama hasta 2 s, según la fuerza del golpe.
-  Caer al agua no aturde. Todos los valores se ajustan en el panel de debug (P).
+  celdas) no podés controlar a la llama hasta 2 s, según la fuerza del golpe;
+  por turnos, si todavía no disparaste, además perdés el turno. Caer al agua no aturde. Todos los valores se ajustan en el panel de debug (P).
 
 ### Mortero
 
-Cuarta arma. Se maneja como un disparo: **mantener disparar** carga la potencia,
+Quinta arma. Se maneja como un disparo: **mantener disparar** carga la potencia,
 **W / S** giran el ángulo (una parábola punteada muestra por dónde saldrías) y
 al **soltar** la propia llama sale volando en esa dirección, hasta 100 celdas/s.
 
 - Al despegar hay una **explosión chica bajo los pies** (radio 3) que rompe el
   suelo y empuja a las otras llamas cercanas, pero no a la tuya.
-- No termina el turno y **no tiene límite de usos**: el costo es la caída. Si
-  aterrizás a más de 55 celdas/s quedás aturdida, y caer al agua es peligroso.
+- No termina el turno y **no tiene límite de usos**. El aterrizaje **no aturde**
+  (es su ventaja frente al jetpack), pero caer al agua es peligroso.
+- Por turnos, si la explosión de despegue **alcanza a una rival**, el turno termina.
 - En tiempo real tiene la misma recarga que un disparo.
 
 ### Jetpack
 
-Quinta arma. **Mantener disparar** empuja a la llama hacia donde apunta (W / S
+Sexta arma. **Mantener disparar** empuja a la llama hacia donde apunta (W / S
 giran el ángulo; A / D corrigen el rumbo sin dar vuelta el empuje) mientras
 quede combustible: unos 3 s de empuje continuo, que dan para subir ~150 celdas.
 

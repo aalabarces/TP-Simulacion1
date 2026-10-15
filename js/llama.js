@@ -14,12 +14,14 @@
    superpone con algo sólido, no se avanza en ese eje.
    ============================================================================= */
 
+/* Armas, en el orden en que aparecen en el selector (Q / E las recorren). */
 const ARMA_BOLA_DE_FUEGO = 0;
-const ARMA_MAGMA = 1;
-const ARMA_LENGUA = 2;     // no dispara: se agarra de una pared y balancea (ver más abajo)
-const ARMA_MORTERO = 3;    // no dispara: lanza a la propia llama como un proyectil
-const ARMA_JETPACK = 4;    // no dispara: empuja a la llama hacia donde apunta mientras haya combustible
-const CANTIDAD_ARMAS = 5;
+const ARMA_BATE = 1;       // no dispara: golpea a las llamas que tiene al lado y las manda a volar
+const ARMA_MAGMA = 2;
+const ARMA_LENGUA = 3;     // no dispara: se agarra de una pared y balancea (ver más abajo)
+const ARMA_MORTERO = 4;    // no dispara: lanza a la propia llama como un proyectil
+const ARMA_JETPACK = 5;    // no dispara: empuja a la llama hacia donde apunta mientras haya combustible
+const CANTIDAD_ARMAS = 6;
 
 const VIDA_MAXIMA = 100;
 const FRACCION_SUMERGIDA_SIN_DANIO = 0.2; // agua por los tobillos (~1 fila de 7) no daña
@@ -64,6 +66,7 @@ class Llama {
     this.tiempoLanzada = 0;
     this.combustible = 1;               // tanque del jetpack: 0 a 1
     this.propulsando = false;           // el jetpack está empujando en este paso
+    this.tiempoBatazo = 0;              // segundos que quedan de la animación del bate
     // Caídas
     this.aturdida = 0;                  // segundos sin control después de un golpe fuerte
   }
@@ -456,11 +459,58 @@ function aplicarEmpujeDeJetpack(llama, dt) {
   crearEscape(llama.centroX - direccionX * 3, llama.centroY - direccionY * 3, -direccionX, -direccionY);
 }
 
+/* ---------- Bate de béisbol ----------
+   Como en Worms: no se carga, se apunta y se batea. Golpea a TODAS las llamas que
+   estén al alcance delante de la llama (rivales o del mismo equipo) y las manda a
+   volar en la dirección de la mira a PARAMETROS.bateVelocidad celdas/s, con un
+   poco de daño. La llama bateada vuela como lanzada por el mortero (rápido y con
+   estela de fuego) hasta aterrizar. Batear cuenta como el disparo del turno (ver
+   alBatear en turnos.js), le pegue a alguien o no. */
+const DURACION_BATAZO = 0.3; // segundos de la animación del golpe
+
+function batear(llama) {
+  const anguloRadianes = llama.angulo * Math.PI / 180;
+  const direccionX = Math.cos(anguloRadianes) * llama.mirando;
+  const direccionY = -Math.sin(anguloRadianes);
+  llama.tiempoBatazo = DURACION_BATAZO;
+  sonarBatazo();
+
+  const bateadas = llamas.filter(otra => {
+    if (otra === llama || !otra.vivo) return false;
+    const dx = otra.centroX - llama.centroX, dy = otra.centroY - llama.centroY;
+    const adelante = dx * llama.mirando > -1; // no golpea a las que tiene detrás
+    return adelante && Math.hypot(dx, dy) <= PARAMETROS.bateAlcance;
+  });
+  for (const otra of bateadas) {
+    soltarLengua(otra);
+    otra.velocidadX = direccionX * PARAMETROS.bateVelocidad;
+    otra.velocidadY = direccionY * PARAMETROS.bateVelocidad;
+    otra.enSuelo = false;
+    otra.lanzada = true;   // vuela rápido y con estela, como con el mortero
+    otra.tiempoLanzada = 0;
+    otra.aturdida = 0;
+    otra.cargando = false;
+    otra.potencia = 0;
+    aplicarDanio(otra, PARAMETROS.bateDanio);
+    const golpeX = (llama.centroX + otra.centroX) / 2, golpeY = (llama.centroY + otra.centroY) / 2;
+    crearChispas(golpeX, golpeY, 30, '255,240,190');
+    crearDestello(golpeX, golpeY, 7, 0.25, '255,230,160');
+  }
+  if (bateadas.length > 0) {
+    sonarHomeRun();
+    juego.temblor = Math.max(juego.temblor, 0.3);
+    mostrarCartel('¡HOME RUN!', '#ffe27a');
+  }
+  if (esTiempoReal()) llama.recarga = PARAMETROS.recargaDisparo;
+  alBatear(bateadas);
+}
+
 /* ---------- Actualización por paso ----------
    controles = { mover (-1..1), saltar, ... } (ver leerControles en entrada.js)
    o null si la llama no se puede mover (no es su turno). */
 function actualizarLlama(llama, dt, controles) {
   llama.tiempoHerido = Math.max(0, llama.tiempoHerido - dt);
+  llama.tiempoBatazo = Math.max(0, llama.tiempoBatazo - dt);
 
   if (!llama.vivo) {
     // El fósforo apagado solo cae y larga humo

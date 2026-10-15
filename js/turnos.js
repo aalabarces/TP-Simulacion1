@@ -39,6 +39,7 @@ const juego = {
   tiempoEnFase: 0,       // en 'escape' cuenta hacia atrás, en 'asentando' hacia adelante
   tiempoHastaCambioDeViento: 0, // tiempo real
   tiempoParaTerminar: -1,       // tiempo real: cuenta regresiva al quedar un solo equipo
+  llamaBateada: null,    // por turnos: la llama que mandó a volar el bate (la sigue la cámara)
   cartel: null,          // mensaje grande en el centro: { texto, color, edad }
   temblor: 0,            // segundos de sacudida de cámara
   textoGanador: ''
@@ -112,6 +113,7 @@ function empezarTurno(equipo) {
   juego.ultimaLlamaDeCadaEquipo[equipo] = juego.llamaActual;
   juego.fase = 'apuntar';
   juego.tiempoTurnoRestante = PARAMETROS.duracionTurno;
+  juego.llamaBateada = null;
   for (const llama of llamas) {
     llama.combustible = 1;         // el tanque del jetpack se llena en cada turno
     soltarLengua(llama);           // la lengua de fuego se suelta al terminar el turno
@@ -170,6 +172,16 @@ function alAlcanzarAUnRival() {
   if (esTiempoReal() || juego.pantalla !== 'jugando' || juego.fase !== 'apuntar') return;
   mostrarCartel('¡Le diste! Fin del turno', '#ffd38a');
   pasarAFaseAsentando();
+}
+
+/* Batear cuenta como el disparo del turno, le pegue a alguien o no: se pasa directo
+   a la fase de escape. Si mandó a volar a alguien, la cámara sigue a la llama bateada
+   (ver objetivoAutomatico en camara.js). */
+function alBatear(bateadas) {
+  if (esTiempoReal() || juego.pantalla !== 'jugando' || juego.fase !== 'apuntar') return;
+  juego.llamaBateada = bateadas.length > 0 ? bateadas[0] : null;
+  juego.fase = 'escape';
+  juego.tiempoEnFase = PARAMETROS.tiempoEscape;
 }
 
 /* ---------- Fin de partida ---------- */
@@ -287,7 +299,9 @@ function actualizarPorTurnos(dt) {
   } else if (juego.fase === 'asentando') {
     juego.tiempoEnFase += dt;
     // Las gotas de las cascadas no cuentan: caen siempre y el turno nunca terminaría
-    const aguaQuieta = contarGotasDelDisparo() < PARTICULAS_PARA_CONSIDERAR_QUIETO && proyectiles.length === 0;
+    // ...y se espera a que aterrice la llama bateada (si la hay)
+    const bateadaEnElAire = juego.llamaBateada !== null && juego.llamaBateada.vivo && juego.llamaBateada.lanzada;
+    const aguaQuieta = contarGotasDelDisparo() < PARTICULAS_PARA_CONSIDERAR_QUIETO && proyectiles.length === 0 && !bateadaEnElAire;
     if ((juego.tiempoEnFase > TIEMPO_MINIMO_ASENTANDO && aguaQuieta) || juego.tiempoEnFase > TIEMPO_MAXIMO_ASENTANDO) {
       terminarTurno();
     }
@@ -351,6 +365,12 @@ function actualizarApuntado(llama, dt, controles) {
 
   // El jetpack no carga ni dispara: empuja (ver llama.js)
   if (llama.arma === ARMA_JETPACK) return;
+
+  // El bate no carga: apretar disparar batea (ver llama.js)
+  if (llama.arma === ARMA_BATE) {
+    if (recienApretado && llama.recarga <= 0) batear(llama);
+    return;
+  }
 
   if (controles.cargar && llama.recarga <= 0) {
     llama.cargando = true;

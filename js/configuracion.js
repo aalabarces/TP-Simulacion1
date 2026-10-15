@@ -9,7 +9,7 @@
    decimales. Se ve en el panel de debug (P) y en la esquina de la pantalla de
    título, así se puede comprobar (por ejemplo en el celular, con GitHub Pages)
    qué versión se está ejecutando. */
-const VERSION = '0.06';
+const VERSION = '0.07';
 
 /* ---------- Tamaño del mundo ----------
    El mundo es una grilla de 384 x 540 celdas: alto y angosto, mucho más grande
@@ -111,6 +111,11 @@ const PARAMETROS = {
   jetpackConsumo: 0.15,           // fracción del tanque por segundo (~6,7 s de empuje continuo)
   jetpackRecargaTiempoReal: 0.15, // tiempo real: fracción del tanque por segundo, apoyada en el suelo
 
+  // Bate de béisbol (ver llama.js)
+  bateVelocidad: 110,             // celdas/s con las que sale volando la llama bateada (el tope de vuelo es 120)
+  bateAlcance: 9,                 // distancia máxima (entre centros) para alcanzar a otra llama
+  bateDanio: 10,                  // HP que saca el golpe
+
   // Caídas
   aturdimientoVelocidad: 55,      // celdas/s de caída desde la que el golpe aturde (el salto normal llega a 32)
   aturdimientoMaximo: 2,          // segundos aturdida con la caída más fuerte (90 celdas/s)
@@ -168,6 +173,10 @@ const SLIDERS_DEBUG = [
   ['jetpackVelocidadMaxima', 'Velocidad máxima', 20, 120, 1],
   ['jetpackConsumo', 'Consumo (tanque/s)', 0.05, 1.5, 0.01],
   ['jetpackRecargaTiempoReal', 'Recarga tiempo real (tanque/s)', 0, 1, 0.01],
+  ['Bate'],
+  ['bateVelocidad', 'Velocidad del batazo', 30, 120, 1],
+  ['bateAlcance', 'Alcance', 4, 20, 0.5],
+  ['bateDanio', 'Daño', 0, 50, 1],
   ['Caídas'],
   ['aturdimientoVelocidad', 'Velocidad que aturde', 30, 90, 1],
   ['aturdimientoMaximo', 'Aturdimiento máximo (s)', 0, 6, 0.1],
