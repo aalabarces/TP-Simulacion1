@@ -11,13 +11,13 @@
 
      Stick izquierdo / cruz ← →   mover
      A                            saltar
-     Stick derecho / cruz ↑ ↓     apuntar (el stick permite ajuste fino)
-     Gatillo derecho (RT)         mantener para cargar, soltar para disparar
-     LB / RB                      cambiar de arma
+     Stick derecho o izquierdo ↑ ↓, cruz ↑ ↓   apuntar (el stick permite ajuste fino)
+     Gatillo derecho (RT) o B     mantener para cargar, soltar para disparar
+     LB / RB                      arma anterior / siguiente
      LT (mantener)                cámara: stick derecho mueve, cruz ↑ ↓ zoom
      Y                            cambiar de llama (Worms)
-     Start                        empezar / revancha
-     Back (Select)                volver al menú (al terminar la partida)
+     Start (≡)                    en el menú, empezar; jugando o al terminar, volver al menú
+     Back (⧉)                     volver al menú
 
    Asignación: el primer joystick conectado es de J1 y el segundo de J2.
    En los modos por turnos cualquier joystick controla a la llama del turno
@@ -125,13 +125,15 @@ function actualizarJoysticks() {
     const camaraManual = gatilloIzquierdo;
     const stickDerechoX = aplicarZonaMuerta(leerEje(joystick, mapeo.sticks[2]));
     const stickDerechoY = aplicarZonaMuerta(leerEje(joystick, mapeo.sticks[3]));
+    const stickIzquierdoY = aplicarZonaMuerta(leerEje(joystick, mapeo.sticks[1]));
     const estado = {
       numero,
       mover: cruz || aplicarZonaMuerta(leerEje(joystick, mapeo.sticks[0])),
+      // Apuntar: cruz ↑ ↓, stick derecho o stick izquierdo arriba/abajo (en ese orden de prioridad).
       // En los sticks el eje Y crece hacia ABAJO: se invierte para que "arriba" sea positivo
-      apuntar: camaraManual ? 0 : (cruzVertical || -stickDerechoY),
+      apuntar: camaraManual ? 0 : (cruzVertical || -stickDerechoY || -stickIzquierdoY),
       saltar: botonApretado(joystick, BOTON.A),
-      cargar: gatilloDerecho,
+      cargar: gatilloDerecho || botonApretado(joystick, BOTON.B), // RT o B
       camara: camaraManual,
       camaraX: camaraManual ? stickDerechoX : 0,
       camaraY: camaraManual ? stickDerechoY : 0,
@@ -143,9 +145,11 @@ function actualizarJoysticks() {
     const ahora = joystick.buttons.map((_, i) => botonApretado(joystick, i));
     const recienApretado = i => ahora[i] && !antes[i];
     const jugador = numero; // 1.º joystick = J1, 2.º = J2
-    if (recienApretado(BOTON.LB) || recienApretado(BOTON.RB)) ejecutarAccion('cambiarArma', jugador);
+    if (recienApretado(BOTON.LB)) ejecutarAccion('armaAnterior', jugador);
+    if (recienApretado(BOTON.RB)) ejecutarAccion('armaSiguiente', jugador);
     if (recienApretado(BOTON.Y)) ejecutarAccion('cambiarLlama', jugador);
-    if (recienApretado(BOTON.START)) ejecutarAccion('aceptar', jugador);
+    // Start (≡): en el menú empieza; jugando o al terminar, vuelve al menú principal
+    if (recienApretado(BOTON.START)) ejecutarAccion(juego.pantalla === 'titulo' ? 'aceptar' : 'menu', jugador);
     if (recienApretado(BOTON.BACK)) ejecutarAccion('menu', jugador);
     // En las pantallas de título y fin: navegar con la cruz y aceptar con A
     if (juego.pantalla !== 'jugando') {

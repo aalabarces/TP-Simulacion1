@@ -231,7 +231,7 @@ function dibujarTemporizadorYViento(anchoPantalla, unidad) {
    Por turnos: uno al centro, de la llama del turno.
    Tiempo real: uno por jugador (J1 abajo a la izquierda, J2 abajo a la derecha). */
 const AYUDA_TECLAS_POR_TURNOS =
-  'Mover A/D o ←/→ · Saltar Espacio o Shift der. · Apuntar W/S o ↑/↓ · Disparar F o Enter (mantener) · Arma Q o .';
+  'Mover A/D o ←/→ · Saltar Espacio o Shift der. · Apuntar W/S o ↑/↓ · Disparar F o Enter (mantener) · Arma Q/E o ,/.';
 const AYUDA_LENGUA =
   'Lengua: Disparar (F o Enter) agarra / suelta · A/D balancear · W/S acortar / alargar · Saltar suelta · hasta 3 enganches seguidos';
 const AYUDA_MORTERO =
@@ -239,8 +239,8 @@ const AYUDA_MORTERO =
 const AYUDA_JETPACK =
   'Jetpack: mantené Disparar (F o Enter) para empujar hacia donde apuntás · W/S ángulo · A/D cambiar de lado en vuelo · el agua lo apaga';
 const AYUDA_TECLAS_TIEMPO_REAL = [
-  'J1: A/D mover · Espacio saltar · W/S apuntar · F disparar · Q arma',
-  'J2: ←/→ mover · Shift der. saltar · ↑/↓ apuntar · Enter disparar · . arma'
+  'J1: A/D mover · Espacio saltar · W/S apuntar · F disparar · Q/E arma',
+  'J2: ←/→ mover · Shift der. saltar · ↑/↓ apuntar · Enter disparar · ,/. arma'
 ];
 
 function dibujarSelectoresDeArmas(anchoPantalla, altoPantalla, unidad) {
@@ -444,13 +444,13 @@ function dibujarPantallaSuperpuesta(anchoPantalla, altoPantalla, unidad) {
     ctx.fillText('Dos elementales de fuego. Una caverna helada. Usá el agua para apagar a tu rival.', anchoPantalla / 2, altoPantalla * 0.34 + 4 * unidad);
     dibujarSelectorDeModo(anchoPantalla, altoPantalla * 0.43, unidad);
     const lineasAyuda = esDispositivoTactil ? AYUDA_TITULO_TACTIL : [
-      'J1: A/D mover · Espacio saltar · W/S apuntar · F disparar (mantener) · Q arma',
-      'J2: ←/→ mover · Shift der. saltar · ↑/↓ apuntar · Enter disparar (mantener) · . arma',
-      '🎮 Joystick: stick mover · A saltar · stick der. apuntar · RT disparar · LB/RB arma · Y llama',
+      'J1: A/D mover · Espacio saltar · W/S apuntar · F disparar (mantener) · Q/E arma anterior/siguiente',
+      'J2: ←/→ mover · Shift der. saltar · ↑/↓ apuntar · Enter disparar (mantener) · ,/. arma anterior/siguiente',
+      '🎮 Joystick: stick mover · A saltar · stick ↑↓ apuntar · RT o B disparar · LB/RB arma · Y llama · ≡ menú',
       'Lengua (3.ª arma): disparar agarra / suelta · A/D balancea · W/S acorta / alarga · saltar suelta',
       'Mortero (4.ª): mantener disparar carga, soltar te lanza · Jetpack (5.ª): mantener disparar empuja hacia donde apuntás',
       'Por turnos se puede usar cualquiera de los controles · Tab cambia de llama (Worms)',
-      'P debug · 8 temperatura · 9 grilla · 0 nuevo mapa · N sonido'
+      'P debug · 8 temperatura · 9 grilla · 0 nuevo mapa · N sonido · Esc menú'
     ];
     ctx.textAlign = 'center';
     ctx.fillStyle = '#9fb2cc';
@@ -471,7 +471,7 @@ function dibujarPantallaSuperpuesta(anchoPantalla, altoPantalla, unidad) {
   ctx.fillStyle = `rgba(255,255,255,${opacidad})`;
   ctx.font = fuente(unidad, 2, 700);
   ctx.textAlign = 'center';
-  ctx.fillText(juego.pantalla === 'titulo' ? 'ENTER o START para empezar' : 'ENTER / START revancha   ·   M / BACK menú', anchoPantalla / 2, altoPantalla * 0.88);
+  ctx.fillText(juego.pantalla === 'titulo' ? 'ENTER o START para empezar' : 'ENTER / A revancha   ·   ESC / ≡ menú', anchoPantalla / 2, altoPantalla * 0.88);
 }
 
 /* Una tarjeta por modo disponible; la elegida se resalta. Se cambia con ←/→,

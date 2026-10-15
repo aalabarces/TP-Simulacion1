@@ -110,10 +110,11 @@ real). En los modos por turnos, el jugador activo puede usar cualquiera de los d
 |---|---|---|---|
 | Mover | A / D | ← / → | Stick izquierdo o cruz ← → |
 | Saltar | Espacio | Shift derecho | A / ✕ |
-| Apuntar | W / S | ↑ / ↓ | Stick derecho o cruz ↑ ↓ |
-| Cargar y disparar (mantener) | F | Enter | Gatillo derecho (RT / R2) |
-| Cambiar de arma (bola · magma · lengua · mortero · jetpack) | Q | . (punto) | LB / RB (L1 / R1) |
+| Apuntar | W / S | ↑ / ↓ | Stick derecho o izquierdo ↑ ↓, o cruz ↑ ↓ |
+| Cargar y disparar (mantener) | F | Enter | Gatillo derecho (RT / R2) o B / ○ |
+| Arma anterior / siguiente (bola · magma · lengua · mortero · jetpack) | Q / E | , / . | LB / RB (L1 / R1) |
 | Cambiar de llama (Worms) | Tab | Tab | Y / △ |
+| Volver al menú principal | Escape (o M) | Escape (o M) | ≡ (Start) o ⧉ (Back) |
 
 Con joysticks, el primero que se conecta es de J1 y el segundo de J2 (en los
 modos por turnos alcanza con uno). El navegador los reconoce recién cuando se
@@ -121,17 +122,19 @@ aprieta algún botón con la página abierta.
 
 ### Lengua de fuego
 
-Tercera arma (la elegís con **Q**, junto a la bola de fuego y el magma). No
+Tercera arma (la elegís con **Q / E**, junto a la bola de fuego y el magma). No
 dispara: lanza una lengua de fuego en la dirección de la mira (alcance 70
 celdas) y, si toca hielo, piedra o roca volcánica, te dejás colgar de ella y te
 balanceás como en una soga.
 
-- **Disparar** (F / Enter / RT) la lanza; con la lengua enganchada, la suelta. Si
+- **Disparar** (F / Enter / RT / B) la lanza; con la lengua enganchada, la suelta. Si
   no toca nada falla y no gasta nada.
 - **A / D** balancean; **W / S** (apuntar) acortan y alargan la cuerda.
 - **Saltar** también suelta, conservando la velocidad con la que ibas.
-- **El ancla se derrite**: la lengua calienta el hielo y a los ~3 s se funde y te
-  suelta. En roca volcánica aguanta 4 s y en piedra 5 s (no se derriten).
+- **El ancla de hielo se derrite**: la lengua calienta el hielo y a los ~3 s se
+  funde y te suelta. En piedra y roca volcánica aguanta sin límite.
+- **Hasta 3 enganches seguidos**; después de 2 s sin estar colgada se recuperan.
+  Al terminar el turno la lengua se suelta.
 - No termina el turno: podés reposicionarte y después disparar (bola de fuego o
   magma) con el resto del turno, incluso colgado.
 - **Caídas fuertes aturden:** si aterrizás a más de 55 celdas/s (caer unas 15

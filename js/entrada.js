@@ -10,7 +10,8 @@
      Saltar           Espacio            Shift derecho
      Apuntar          W / S              ↑ / ↓
      Cargar/disparar  F (mantener)       Enter (mantener)
-     Cambiar arma     Q                  . (punto)
+     Arma anterior    Q                  , (coma)
+     Arma siguiente   E                  . (punto)
      (con la lengua de fuego: disparar la lanza o la suelta; saltar también suelta)
 
    En los modos POR TURNOS los dos esquemas (y cualquier joystick) controlan a
@@ -23,17 +24,20 @@
    (el juego no usa el mouse)
 
    Otras teclas: Tab cambiar de llama (Worms) · P debug · N sonido ·
-   8 vista de temperatura · 9 vista de grilla · 0 nuevo mapa · M menú (al terminar).
+   8 vista de temperatura · 9 vista de grilla · 0 nuevo mapa ·
+   Escape (o M) volver al menú principal.
    ============================================================================= */
 
 const ESQUEMAS_DE_TECLADO = [
   { // J1
     izquierda: ['KeyA'], derecha: ['KeyD'], saltar: ['Space'],
-    apuntarArriba: ['KeyW'], apuntarAbajo: ['KeyS'], cargar: ['KeyF'], cambiarArma: ['KeyQ']
+    apuntarArriba: ['KeyW'], apuntarAbajo: ['KeyS'], cargar: ['KeyF'],
+    armaAnterior: ['KeyQ'], armaSiguiente: ['KeyE']
   },
   { // J2
     izquierda: ['ArrowLeft'], derecha: ['ArrowRight'], saltar: ['ShiftRight'],
-    apuntarArriba: ['ArrowUp'], apuntarAbajo: ['ArrowDown'], cargar: ['Enter', 'NumpadEnter'], cambiarArma: ['Period']
+    apuntarArriba: ['ArrowUp'], apuntarAbajo: ['ArrowDown'], cargar: ['Enter', 'NumpadEnter'],
+    armaAnterior: ['Comma'], armaSiguiente: ['Period']
   }
 ];
 const CUALQUIER_JUGADOR = -1; // en los modos por turnos, cualquier control mueve a la llama del turno
@@ -108,7 +112,8 @@ function ejecutarAccion(accion, jugador) {
       }
       break;
     case 'menu':
-      if (juego.pantalla === 'fin') juego.pantalla = 'titulo';
+      // Desde la partida o desde la pantalla de fin, al menú principal (con un mapa nuevo de fondo)
+      if (juego.pantalla !== 'titulo') { juego.pantalla = 'titulo'; prepararMundo(); }
       break;
     case 'modoAnterior':
       if (juego.pantalla === 'titulo') elegirModo(-1);
@@ -119,9 +124,15 @@ function ejecutarAccion(accion, jugador) {
     case 'cambiarLlama':
       cambiarDeLlama();
       break;
-    case 'cambiarArma': {
+    case 'armaAnterior':
+    case 'armaSiguiente': {
+      // Recorre las armas en círculo: después de la última viene la primera (y al revés)
       const llama = llamaQueManeja(jugador);
-      if (puedeCambiarDeArma(llama)) { llama.arma = (llama.arma + 1) % CANTIDAD_ARMAS; sonarCambioDeLlama(); }
+      const paso = accion === 'armaSiguiente' ? 1 : -1;
+      if (puedeCambiarDeArma(llama)) {
+        llama.arma = (llama.arma + paso + CANTIDAD_ARMAS) % CANTIDAD_ARMAS;
+        sonarCambioDeLlama();
+      }
       break;
     }
   }
@@ -158,9 +169,10 @@ window.addEventListener('keydown', evento => {
 
   switch (evento.code) {
     case 'Enter': case 'NumpadEnter': ejecutarAccion('aceptar', jugador); break;
-    case 'KeyM': ejecutarAccion('menu', jugador); break;
+    case 'Escape': case 'KeyM': ejecutarAccion('menu', jugador); break;
     case 'Tab': ejecutarAccion('cambiarLlama', jugador); break;
-    case 'KeyQ': case 'Period': ejecutarAccion('cambiarArma', jugador); break;
+    case 'KeyQ': case 'Comma': ejecutarAccion('armaAnterior', jugador); break;
+    case 'KeyE': case 'Period': ejecutarAccion('armaSiguiente', jugador); break;
     case 'KeyP': alternarPanelDebug(); break;
     case 'KeyN': alternarSilencio(); break;
     case 'KeyC': recentrarCamara(); break;
