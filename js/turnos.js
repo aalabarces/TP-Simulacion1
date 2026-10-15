@@ -152,6 +152,26 @@ function alTerminarElDisparo() {
   }
 }
 
+/* Se llama cuando una llama queda aturdida por una caída fuerte. Por turnos, si es
+   la llama del turno y todavía no disparó, pierde el turno: caerse tiene un costo
+   (aterrizar con el mortero no aturde, ver aturdirPorCaida). En tiempo real no hay
+   turnos: el aturdimiento solo la deja unos segundos sin control. */
+function alAturdirse(llama) {
+  if (esTiempoReal() || juego.pantalla !== 'jugando' || juego.fase !== 'apuntar') return;
+  if (llama.numero !== juego.llamaActual) return;
+  mostrarCartel('¡Aturdida! Pierde el turno', '#ffd38a');
+  pasarAFaseAsentando();
+}
+
+/* Una explosión de la llama del turno alcanzó a una rival ANTES de disparar (la del
+   despegue del mortero): cuenta como el disparo del turno y el turno termina. Los
+   disparos normales ya terminan el turno al explotar (ver alTerminarElDisparo). */
+function alAlcanzarAUnRival() {
+  if (esTiempoReal() || juego.pantalla !== 'jugando' || juego.fase !== 'apuntar') return;
+  mostrarCartel('¡Le diste! Fin del turno', '#ffd38a');
+  pasarAFaseAsentando();
+}
+
 /* ---------- Fin de partida ---------- */
 
 /* Equipos que todavía tienen al menos una llama encendida. */

@@ -154,29 +154,34 @@ function explotarBolaDeFuego(x, y, opciones = {}) {
   // El agua alrededor del cráter puede caer o correrse: despertar toda la zona (con 1 celda de margen)
   despertarZona(x - radioAnillo - 1, y - radioAnillo - 1, x + radioAnillo + 1, y + radioAnillo + 1);
 
-  empujarLlamas(x, y, radioAnillo + 4, opciones.excluir);
+  const alcanzadas = empujarLlamas(x, y, radioAnillo + 4, opciones.excluir);
   if (!opciones.silenciosa) sonarExplosion();
   crearChispas(x, y, opciones.chispas ?? 50, '255,160,50');
   crearHumo(x, y, opciones.chispas ? 4 : 8);
   crearDestello(x, y, radioAnillo * 1.6, 0.35, '255,150,50');
   juego.temblor = Math.max(juego.temblor, opciones.temblor ?? 0.35);
+  return alcanzadas;
 }
 
 /* Explosión chica bajo los pies de una llama que se lanza con el mortero: rompe el
    suelo (cráter de PARAMETROS.radioMortero) y empuja a las demás llamas cercanas,
-   pero no a la propia. */
+   pero no a la propia. Si alcanza a una llama rival, por turnos se termina el
+   turno (ver alAlcanzarAUnRival en turnos.js). */
 function explosionDeDespegue(llama) {
-  explotarBolaDeFuego(llama.centroX, llama.y + llama.alto, {
+  const alcanzadas = explotarBolaDeFuego(llama.centroX, llama.y + llama.alto, {
     radioCrater: PARAMETROS.radioMortero,
     radioAnillo: PARAMETROS.radioMortero + 4,
     excluir: llama, silenciosa: true, chispas: 22, temblor: 0.12
   });
+  if (alcanzadas.some(otra => otra.vivo && otra.equipo !== llama.equipo)) alAlcanzarAUnRival();
 }
 
 /* Onda expansiva: empuja a las llamas alejándolas del centro.
    La fuerza es máxima en el centro y baja linealmente hasta 0 en el radio.
-   Además los levanta un poco (-15 en Y) para que "salten" con la explosión. */
+   Además los levanta un poco (-15 en Y) para que "salten" con la explosión.
+   Devuelve las llamas alcanzadas. */
 function empujarLlamas(x, y, radio, excluida) {
+  const alcanzadas = [];
   for (const llama of llamas) {
     if (llama === excluida) continue;
     const dx = llama.centroX - x, dy = llama.centroY - y;
@@ -186,7 +191,9 @@ function empujarLlamas(x, y, radio, excluida) {
     // (dx, dy) / distancia = dirección unitaria desde la explosión hacia la llama
     llama.velocidadX += dx / distanciaAlCentro * 45 * intensidad;
     llama.velocidadY += dy / distanciaAlCentro * 45 * intensidad - 15 * intensidad;
+    alcanzadas.push(llama);
   }
+  return alcanzadas;
 }
 
 /* ESCUPIR MAGMA

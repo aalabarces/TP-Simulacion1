@@ -235,7 +235,7 @@ const AYUDA_TECLAS_POR_TURNOS =
 const AYUDA_LENGUA =
   'Lengua: Disparar (F o Enter) agarra / suelta · A/D balancear · W/S acortar / alargar · Saltar suelta · hasta 3 enganches seguidos';
 const AYUDA_MORTERO =
-  'Mortero: mantené Disparar (F o Enter) para cargar y soltá para lanzarte · W/S ángulo · caer fuerte aturde';
+  'Mortero: mantené Disparar (F o Enter) para cargar y soltá para lanzarte · W/S ángulo · el aterrizaje no aturde';
 const AYUDA_JETPACK =
   'Jetpack: mantené Disparar (F o Enter) para empujar hacia donde apuntás · W/S ángulo · A/D cambiar de lado en vuelo · el agua lo apaga';
 const AYUDA_TECLAS_TIEMPO_REAL = [

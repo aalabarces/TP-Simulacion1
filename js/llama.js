@@ -168,9 +168,12 @@ function apagarLlama(llama) {
 
   llama.cargando = false;
   llama.potencia = 0;
-  // Si la que se apagó es la que estaba jugando, el turno termina (modos por turnos)
-  const eraLaActiva = llama.numero === juego.llamaActual && !MODOS_DE_JUEGO[juego.modo].tiempoReal;
-  if (eraLaActiva && juego.pantalla === 'jugando' && (juego.fase === 'apuntar' || juego.fase === 'escape')) pasarAFaseAsentando();
+  // Modos por turnos: el turno termina si se apaga la llama que estaba jugando o si,
+  // antes de disparar, se apaga CUALQUIER llama (por ejemplo, una rival empujada al
+  // lago por la explosión del mortero): apagar a alguien cuenta como el disparo del turno.
+  if (MODOS_DE_JUEGO[juego.modo].tiempoReal || juego.pantalla !== 'jugando') return;
+  const eraLaActiva = llama.numero === juego.llamaActual;
+  if (juego.fase === 'apuntar' || (eraLaActiva && juego.fase === 'escape')) pasarAFaseAsentando();
 }
 
 /* ---------- Movimiento con colisiones ---------- */
@@ -248,10 +251,12 @@ function frenarExponencial(velocidad, retenerPorSegundo, dt) {
 /* ---------- Caídas ----------
    Si la llama aterriza a más de PARAMETROS.aturdimientoVelocidad celdas/s (un salto
    normal llega a ~32; caer 30 celdas, a ~77) queda aturdida: no responde a ningún
-   control. Cuanto más fuerte el golpe, más tarda en recuperarse. Caer al agua no aturde. */
+   control. Cuanto más fuerte el golpe, más tarda en recuperarse. Caer al agua no aturde.
+   Aterrizar después de lanzarse con el MORTERO tampoco: es su ventaja frente al
+   jetpack (que es más controlable pero se queda sin combustible). */
 function aturdirPorCaida(llama, velocidadDeImpacto) {
   const umbral = PARAMETROS.aturdimientoVelocidad;
-  if (!llama.vivo || PARAMETROS.aturdimientoMaximo <= 0) return;
+  if (!llama.vivo || llama.lanzada || PARAMETROS.aturdimientoMaximo <= 0) return;
   if (velocidadDeImpacto <= umbral || llama.fraccionMojada > FRACCION_SUMERGIDA_SIN_DANIO) return;
   const fuerza = limitar((velocidadDeImpacto - umbral) / Math.max(1, FISICA_LLAMA.velocidadCaidaMaxima - umbral), 0, 1);
   const duracion = Math.max(0.3, PARAMETROS.aturdimientoMaximo * fuerza);
@@ -262,6 +267,7 @@ function aturdirPorCaida(llama, velocidadDeImpacto) {
   crearHumo(llama.centroX, llama.y + llama.alto - 1, 4 + Math.round(fuerza * 6));
   crearChispas(llama.centroX, llama.y + llama.alto, 6, '255,220,150');
   sonarAturdimiento(fuerza);
+  alAturdirse(llama); // por turnos, la llama del turno pierde lo que le quedaba (ver turnos.js)
 }
 
 /* ---------- Lengua de fuego ----------
@@ -404,7 +410,7 @@ function corregirPosicionPorCuerda(llama) {
    pero la llama sale volando en la dirección de la mira con una velocidad de hasta
    PARAMETROS.morteroVelocidad. Al despegar hay una explosión chica bajo los pies
    que rompe el suelo (sin lastimar ni empujar a la propia llama). No termina el
-   turno ni tiene límite de usos: el costo es la caída (ver aturdirPorCaida). */
+   turno, no tiene límite de usos y el aterrizaje no aturde (ver aturdirPorCaida). */
 function lanzarseConMortero(llama) {
   const anguloRadianes = llama.angulo * Math.PI / 180;
   const direccionX = Math.cos(anguloRadianes) * llama.mirando;
