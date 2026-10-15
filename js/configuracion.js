@@ -9,14 +9,15 @@
    decimales. Se ve en el panel de debug (P) y en la esquina de la pantalla de
    título, así se puede comprobar (por ejemplo en el celular, con GitHub Pages)
    qué versión se está ejecutando. */
-const VERSION = '0.04';
+const VERSION = '0.05';
 
 /* ---------- Tamaño del mundo ----------
-   El mundo es una grilla de 320 x 540 celdas: alto y angosto, mucho más grande
+   El mundo es una grilla de 384 x 540 celdas: alto y angosto, mucho más grande
    que la pantalla (la cámara, en camara.js, muestra una parte).
    Todas las distancias y velocidades del juego se miden en CELDAS
-   (por ejemplo, "gravedad 100" = 100 celdas/s²). */
-const ANCHO_GRILLA = 320;
+   (por ejemplo, "gravedad 100" = 100 celdas/s²). El ancho es múltiplo de 16
+   (el tamaño de los bloques que se "duermen", ver grilla.js). */
+const ANCHO_GRILLA = 384;
 const ALTO_GRILLA = 540;
 const TOTAL_CELDAS = ANCHO_GRILLA * ALTO_GRILLA;
 

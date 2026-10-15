@@ -2,7 +2,7 @@
 /* =============================================================================
    CÁMARA
 
-   El mundo (320×540) es más grande que la pantalla. La cámara dice qué parte se ve:
+   El mundo (384×540) es más grande que la pantalla. La cámara dice qué parte se ve:
      x, y        centro de la vista, en celdas
      vistaAncho  cuántas celdas entran a lo ANCHO de la pantalla (el zoom):
                  más chico = más cerca. El alto sale de la proporción de la ventana.
@@ -22,7 +22,11 @@
    ============================================================================= */
 
 const VISTA_ANCHO_MINIMA = 110;       // zoom máximo: 110 celdas a lo ancho (más cerca se pierde el contexto)
-const VISTA_ANCHO_INICIAL = 290;      // zoom con el que arranca una partida: casi todo el ancho del mundo (320)
+const VISTA_ANCHO_INICIAL = ANCHO_GRILLA; // zoom con el que arranca una partida: todo el ancho del mundo
+/* Por turnos, la llama no queda en el centro de la pantalla sino más abajo: se ve
+   más de lo que hay ARRIBA (los cuencos con agua que se pueden romper). Es la
+   fracción del alto de la vista que se corre el encuadre hacia arriba. */
+const CORRIMIENTO_HACIA_ARRIBA = 0.18;
 const VISTA_TIEMPO_REAL_MINIMA = 140; // en tiempo real nunca se acerca más que esto
 const TIEMPO_LIBRE_SIN_TOCAR = 6;     // segundos hasta que la cámara libre vuelve sola
 const SUAVIZADO_CAMARA = 5;           // más alto = la cámara sigue más rápido
@@ -169,7 +173,8 @@ function objetivoAutomatico() {
   else if (juego.fase === 'asentando' && camara.foco) foco = camara.foco;
   else {
     const llama = llamaActual();
-    if (llama) foco = { x: llama.centroX, y: llama.centroY };
+    const altoDeLaVista = camara.vistaPreferida * g.altoVista / g.ancho;
+    if (llama) foco = { x: llama.centroX, y: llama.centroY - altoDeLaVista * CORRIMIENTO_HACIA_ARRIBA };
   }
   if (!foco) return centroDelMundo;
   return { x: foco.x, y: foco.y, vista: camara.vistaPreferida };

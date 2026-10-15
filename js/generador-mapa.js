@@ -185,7 +185,7 @@ function generarParedes(semilla) {
    que cuelga del techo. Romper la cáscara con fuego libera el agua. */
 function generarReservasDeAgua(aleatorioEntre, enteroEntre) {
   const reservas = [];
-  const cantidad = enteroEntre(8, 11);
+  const cantidad = enteroEntre(10, 13);
   let intentos = 0;
   while (reservas.length < cantidad && intentos++ < 400) {
     const radioX = enteroEntre(6, 11);
@@ -230,7 +230,7 @@ function generarReservasDeAgua(aleatorioEntre, enteroEntre) {
    burbuja en cada lugar donde entra (con una pared de hielo de 1 celda alrededor).
    A medida que el techo se llena, cada vez menos intentos tienen lugar: el
    resultado es un techo "lleno" sin que las burbujas se toquen. */
-const INTENTOS_BURBUJAS = 6000;
+const INTENTOS_BURBUJAS = 7200;
 const RADIO_MINIMO_BURBUJA = 3;
 const RADIO_MAXIMO_BURBUJA = 5.5;
 
@@ -287,7 +287,7 @@ function circuloEsTodoHielo(centroX, centroY, radio) {
 
 /* ---------- Estalactitas decorativas (también se pueden romper) ---------- */
 function generarEstalactitas(aleatorioEntre, enteroEntre) {
-  const cantidad = enteroEntre(6, 12);
+  const cantidad = enteroEntre(7, 14);
   for (let n = 0; n < cantidad; n++) {
     const x0 = enteroEntre(14, ANCHO_GRILLA - 14);
     // Buscar dónde termina el techo en esa columna
@@ -623,8 +623,8 @@ function generarEstructurasSueltas(aleatorioEntre, enteroEntre, aleatorio) {
   const arribaDeLaArena = mapa.filaArenaMinima - ESPACIO_SOBRE_ARENA;  // las estructuras de la zona alta terminan acá
   const debajoDeLaArena = mapa.filaArenaMaxima + ESPACIO_BAJO_ARENA;   // y las de la zona baja empiezan acá
   const zonas = [
-    { desde: FILA_MINIMA_ESTRUCTURAS, hasta: arribaDeLaArena, cuencos: 18, repisas: 6 },
-    { desde: debajoDeLaArena, hasta: mapa.filaSuperiorLago - 50, cuencos: 7, repisas: 3 }
+    { desde: FILA_MINIMA_ESTRUCTURAS, hasta: arribaDeLaArena, cuencos: 22, repisas: 7 },
+    { desde: debajoDeLaArena, hasta: mapa.filaSuperiorLago - 50, cuencos: 9, repisas: 4 }
   ];
   columnasDeCuencos = [];
   for (const zona of zonas) {
@@ -657,7 +657,7 @@ function generarEstructurasSueltas(aleatorioEntre, enteroEntre, aleatorio) {
 const ESPACIO_LIBRE_SOBRE_PIEDRA = 10; // filas de aire sobre la piedra: más que el alto del personaje (7)
 
 function generarPiedrasDeSalvacion(aleatorioEntre, enteroEntre) {
-  const cantidad = enteroEntre(10, 14);
+  const cantidad = enteroEntre(12, 17);
   const primeraFila = mapa.filaArenaMaxima + ESPACIO_BAJO_ARENA + 4;
   let creadas = 0, intentos = 0;
   while (creadas < cantidad && intentos++ < 600) {

@@ -34,7 +34,7 @@ js/
   configuracion.js      constantes, materiales, parámetros ajustables, modos de juego
   utilidades.js         matemática general: aleatorio con semilla, ruido, colores
   grilla.js             estado de la grilla (arreglos tipados por celda)
-  generador-mapa.js     mapa procedural vertical 320×540: techo con reservas y burbujas,
+  generador-mapa.js     mapa procedural vertical 384×540: techo con reservas y burbujas,
                         zona alta y baja con cuencos en U (distinto llenado) y repisas,
                         arena central con una plataforma por llama (simétrica) y
                         puentes con pozos, piedras de salvación, lago

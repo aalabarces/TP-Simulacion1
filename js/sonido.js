@@ -164,12 +164,79 @@ function sonarChapoteo() {
   tono('sine', frecuencia, frecuencia * 0.45, t, 0.09).connect(envolvente(t, 0.07, 0.003, 0.11));
 }
 
-/* Llama que se apaga: siseo largo + un tono triste que baja. */
+/* Llama que se apaga: siseo largo + una vocecita que grita "¡me muero!". */
 function sonarApagarse() {
   if (!audioListo()) return;
   const t = sonido.contexto.currentTime;
-  fuenteDeRuido(t, 1.4).connect(crearFiltro('highpass', 2500)).connect(envolvente(t, 0.35, 0.02, 1.3));
-  tono('triangle', 620, 140, t + 0.1, 0.9).connect(envolvente(t + 0.1, 0.14, 0.02, 0.9));
+  fuenteDeRuido(t, 1.4).connect(crearFiltro('highpass', 2500)).connect(envolvente(t, 0.3, 0.02, 1.3));
+  sonarMeMuero(t + 0.05);
+}
+
+/* "¡Me muero!" con SÍNTESIS DE FORMANTES, como un sintetizador de voz muy simple.
+   La voz humana es un zumbido (las cuerdas vocales: acá una onda diente de sierra,
+   rica en armónicos) que pasa por la boca, que lo filtra: cada vocal refuerza dos
+   franjas de frecuencia propias, los FORMANTES F1 y F2 (la "a" ~800/1200 Hz, la
+   "u" ~330/800 Hz...). Moviendo dos filtros pasabanda de una vocal a la otra
+   mientras cambia el volumen, el zumbido "dice" la frase. La voz es aguda y rápida,
+   de dibujito (como los gusanos del Worms), y la "o" final cae con un temblor. */
+const SONIDOS_ME_MUERO = [
+  // [duración (s), F1 (Hz), F2 (Hz), volumen relativo, altura de la voz (Hz)]
+  [0.06, 300, 1300, 0.25, 470],  // m (labios cerrados: suena sordo y flojo)
+  [0.10, 480, 2200, 1.00, 500],  // e
+  [0.05, 300, 1200, 0.25, 470],  // m
+  [0.09, 340, 820, 0.90, 440],   // u
+  [0.09, 500, 2000, 1.00, 430],  // e
+  [0.03, 420, 1500, 0.35, 410],  // r (un golpecito de lengua: casi un corte)
+  [0.38, 540, 900, 1.00, 400]    // ooo (larga, la voz se cae)
+];
+
+function sonarMeMuero(inicio) {
+  const contexto = sonido.contexto;
+  const duracionTotal = SONIDOS_ME_MUERO.reduce((suma, s) => suma + s[0], 0);
+
+  const cuerdas = contexto.createOscillator();
+  cuerdas.type = 'sawtooth';
+  // Temblor de la voz (vibrato): un oscilador lento que mueve la altura ±4%
+  const temblor = contexto.createOscillator();
+  temblor.frequency.value = 9;
+  const anchoTemblor = contexto.createGain();
+  anchoTemblor.gain.value = 18;
+  temblor.connect(anchoTemblor).connect(cuerdas.frequency);
+
+  const formante1 = crearFiltro('bandpass', 0, 7);
+  const formante2 = crearFiltro('bandpass', 0, 9);
+  const volumenF2 = contexto.createGain();
+  volumenF2.gain.value = 0.6;
+  const voz = contexto.createGain();
+  voz.connect(sonido.salida);
+  cuerdas.connect(formante1).connect(voz);
+  cuerdas.connect(formante2).connect(volumenF2).connect(voz);
+
+  // Cada sonido se alcanza con una rampa corta (la boca no salta de una vocal a otra)
+  const NIVEL = 0.9;
+  const [, f1Inicial, f2Inicial, , alturaInicial] = SONIDOS_ME_MUERO[0];
+  formante1.frequency.setValueAtTime(f1Inicial, inicio);
+  formante2.frequency.setValueAtTime(f2Inicial, inicio);
+  cuerdas.frequency.setValueAtTime(alturaInicial, inicio);
+  voz.gain.setValueAtTime(0.0001, inicio);
+  let t = inicio;
+  for (const [duracion, f1, f2, volumen, altura] of SONIDOS_ME_MUERO) {
+    const llegada = t + Math.min(0.03, duracion * 0.6);
+    formante1.frequency.linearRampToValueAtTime(f1, llegada);
+    formante2.frequency.linearRampToValueAtTime(f2, llegada);
+    cuerdas.frequency.linearRampToValueAtTime(altura, llegada);
+    voz.gain.linearRampToValueAtTime(NIVEL * volumen, llegada);
+    t += duracion;
+  }
+  // La "o" final: la voz cae una quinta y se apaga
+  cuerdas.frequency.linearRampToValueAtTime(260, t);
+  voz.gain.setValueAtTime(NIVEL, t - 0.15);
+  voz.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+
+  cuerdas.start(inicio);
+  temblor.start(inicio);
+  cuerdas.stop(inicio + duracionTotal + 0.1);
+  temblor.stop(inicio + duracionTotal + 0.1);
 }
 
 /* Mortero: un "¡pum!" grave (la explosión bajo los pies) y un silbido que sube mientras sale disparada. */

@@ -95,7 +95,7 @@ function intercambiarCeldas(indiceA, indiceB) {
    con actividad para el PRÓXIMO. Al terminar el paso de fluidos, el próximo pasa
    a ser el actual. */
 const TAMANIO_BLOQUE = 16;
-const BLOQUES_X = Math.ceil(ANCHO_GRILLA / TAMANIO_BLOQUE); // 20
+const BLOQUES_X = Math.ceil(ANCHO_GRILLA / TAMANIO_BLOQUE); // 24
 const BLOQUES_Y = Math.ceil(ALTO_GRILLA / TAMANIO_BLOQUE);  // 12 (la última fila de bloques mide 4 celdas)
 const bloqueDespierto = new Uint8Array(BLOQUES_X * BLOQUES_Y);
 const bloqueDespiertoProximo = new Uint8Array(BLOQUES_X * BLOQUES_Y);
