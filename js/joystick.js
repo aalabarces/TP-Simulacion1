@@ -35,6 +35,38 @@ const UMBRAL_GATILLO = 0.3;    // el gatillo es analógico (0 a 1): desde acá c
 let estadoJoysticks = [];
 let botonesDelCuadroAnterior = []; // para detectar el momento en que se APRIETA un botón
 
+/* ---------- Mapeo de los ejes ----------
+   Con el mapeo ESTÁNDAR (joystick.mapping === 'standard') los ejes son siempre
+   0/1 stick izquierdo X/Y y 2/3 stick derecho X/Y, y los gatillos son botones (6/7).
+   Pero el navegador no siempre reconoce el joystick: con mapeo NO estándar el
+   orden de los ejes cambia según el modelo y los gatillos suelen venir como EJES
+   que en reposo valen -1 y apretados +1. Si se leyera uno de esos como stick, la
+   mira subiría sola (−1 en reposo) y bajaría al apretar el gatillo.
+   Por eso, la primera vez que se ve un joystick no estándar se mira cada eje en
+   reposo: los que están cerca de 0 son sticks (en orden: izq X, izq Y, der X,
+   der Y) y los que están cerca de -1 son gatillos (en orden: LT, RT). */
+const mapeosDeEjes = new Map(); // índice del joystick -> { sticks: [...], gatillos: [...] }
+
+function mapeoDeEjes(joystick) {
+  if (joystick.mapping === 'standard') return { sticks: [0, 1, 2, 3], gatillos: [] };
+  let mapeo = mapeosDeEjes.get(joystick.index);
+  if (!mapeo) {
+    mapeo = { sticks: [], gatillos: [] };
+    joystick.axes.forEach((valor, eje) => (valor < -0.5 ? mapeo.gatillos : mapeo.sticks).push(eje));
+    mapeosDeEjes.set(joystick.index, mapeo);
+  }
+  return mapeo;
+}
+
+function leerEje(joystick, eje) {
+  return eje === undefined ? 0 : (joystick.axes[eje] || 0);
+}
+
+/* Un gatillo que viene como eje va de -1 (suelto) a +1 (apretado). */
+function gatilloComoEjeApretado(joystick, eje) {
+  return eje !== undefined && (leerEje(joystick, eje) + 1) / 2 > UMBRAL_GATILLO;
+}
+
 /* Elimina el temblor de los sticks y reescala: con la zona muerta 0.25,
    un valor de 0.25 pasa a 0 y uno de 1 sigue siendo 1. */
 function aplicarZonaMuerta(valor) {
@@ -82,20 +114,24 @@ function actualizarJoysticks() {
 
   estadoJoysticks = conectados.map((joystick, numero) => {
     liberarBotonesSoltados(joystick);
+    const mapeo = mapeoDeEjes(joystick);
     const cruz = (botonApretado(joystick, BOTON.DERECHA) ? 1 : 0) - (botonApretado(joystick, BOTON.IZQUIERDA) ? 1 : 0);
     const cruzVertical = (botonApretado(joystick, BOTON.ARRIBA) ? 1 : 0) - (botonApretado(joystick, BOTON.ABAJO) ? 1 : 0);
+    // Gatillos: como botón (mapeo estándar) o como eje (no estándar)
+    const gatilloIzquierdo = botonApretado(joystick, BOTON.LT) || gatilloComoEjeApretado(joystick, mapeo.gatillos[0]);
+    const gatilloDerecho = botonApretado(joystick, BOTON.RT) || gatilloComoEjeApretado(joystick, mapeo.gatillos[1]);
     // Con el gatillo izquierdo apretado, el stick derecho y la cruz ↑ ↓ manejan la cámara
     // (ver camara.js) en vez de apuntar
-    const camaraManual = botonApretado(joystick, BOTON.LT);
-    const stickDerechoX = aplicarZonaMuerta(joystick.axes[2] || 0);
-    const stickDerechoY = aplicarZonaMuerta(joystick.axes[3] || 0);
+    const camaraManual = gatilloIzquierdo;
+    const stickDerechoX = aplicarZonaMuerta(leerEje(joystick, mapeo.sticks[2]));
+    const stickDerechoY = aplicarZonaMuerta(leerEje(joystick, mapeo.sticks[3]));
     const estado = {
       numero,
-      mover: cruz || aplicarZonaMuerta(joystick.axes[0] || 0),
+      mover: cruz || aplicarZonaMuerta(leerEje(joystick, mapeo.sticks[0])),
       // En los sticks el eje Y crece hacia ABAJO: se invierte para que "arriba" sea positivo
       apuntar: camaraManual ? 0 : (cruzVertical || -stickDerechoY),
       saltar: botonApretado(joystick, BOTON.A),
-      cargar: botonApretado(joystick, BOTON.RT),
+      cargar: gatilloDerecho,
       camara: camaraManual,
       camaraX: camaraManual ? stickDerechoX : 0,
       camaraY: camaraManual ? stickDerechoY : 0,
@@ -123,8 +159,22 @@ function actualizarJoysticks() {
 }
 
 window.addEventListener('gamepadconnected', evento => {
+  mapeosDeEjes.delete(evento.gamepad.index); // se vuelve a detectar con el joystick en reposo
   mostrarCartel(`🎮 Joystick conectado (${evento.gamepad.index + 1})`, '#cfe0f5');
 });
-window.addEventListener('gamepaddisconnected', () => {
+window.addEventListener('gamepaddisconnected', evento => {
+  mapeosDeEjes.delete(evento.gamepad.index);
   mostrarCartel('🎮 Joystick desconectado', '#ffd38a');
 });
+
+/* Texto para el panel de debug: mapeo detectado y valor de cada eje. */
+function describirJoysticks() {
+  if (!navigator.getGamepads) return 'sin soporte';
+  const conectados = Array.from(navigator.getGamepads()).filter(j => j && j.connected);
+  if (conectados.length === 0) return 'ninguno';
+  return conectados.map(j => {
+    const mapeo = mapeoDeEjes(j);
+    const ejes = j.axes.map(v => v.toFixed(2)).join(' ');
+    return `${j.index + 1}: ${j.mapping || 'no estándar'} · sticks [${mapeo.sticks}] gatillos [${mapeo.gatillos}]\n            ejes ${ejes}`;
+  }).join('\n            ');
+}

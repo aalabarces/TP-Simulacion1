@@ -91,7 +91,8 @@ function actualizarEstadisticas(estadisticas) {
     `fase        ${juego.pantalla}/${juego.fase}\n` +
     `viento      ${viento.toFixed(2)}\n` +
     `nivel lago  fila ${mapa.filaSuperiorLago}\n` +
-    `semilla     ${mapa.semilla}`;
+    `semilla     ${mapa.semilla}\n` +
+    `joystick    ${describirJoysticks()}`;
 }
 
 construirLeyenda();
