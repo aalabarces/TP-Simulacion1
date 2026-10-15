@@ -16,14 +16,15 @@
      1. Techo de hielo con estalactitas, reservas de agua colgantes y burbujas
         de agua encerradas dentro del hielo.
      2. Paredes laterales de hielo (por ellas caen las cascadas).
-     3. ZONA ALTA: cuencos en U (con distinta cantidad de agua, algunos vacíos) y
-        repisas flotando a distintas alturas. Romper la pared de un cuenco suelta
-        su agua hacia abajo; rellenarla con magma la desvía.
+     3. ZONA ALTA: cuencos en U con agua (distintas cantidades) flotando a
+        distintas alturas. Romper la pared de un cuenco suelta su agua hacia
+        abajo; rellenarla con magma la desvía.
      4. ARENA: una plataforma por llama, la mitad de cada lado, a distintas
-        alturas y con algún puente (y pozos) suelto. Sin paraguas: encima puede haber un cuenco con agua,
-        un cuenco vacío, una repisa o nada, al azar.
-     5. ZONA BAJA: más cuencos y piedras chicas flotando, que con suerte frenan
-        una caída.
+        alturas y con algún puente (y pozos) suelto. Encima de cada una, un
+        TECHO DE ROCA más chico que protege a la llama del agua que cae (se
+        puede romper con la bola de fuego).
+     5. ZONA BAJA: más cuencos con agua y piedras chicas flotando, que con
+        suerte frenan una caída.
      6. Lago de agua "termal" en el fondo (caer ahí es ahogarse); sube con las
         cascadas.
    ============================================================================= */
@@ -126,7 +127,7 @@ function generarMapa(semilla, cantidadPlataformas) {
   mapa.filaArenaMaxima = Math.max(...plataformas.map(p => p.filaSuperior));
   mapa.filaArena = Math.round((mapa.filaArenaMinima + mapa.filaArenaMaxima) / 2);
 
-  generarEstructurasSobreLaArena(aleatorioEntre, enteroEntre, aleatorio);
+  generarTechosDeRoca(plataformas, enteroEntre);
   generarEstructurasSueltas(aleatorioEntre, enteroEntre, aleatorio);
   generarPiedrasDeSalvacion(aleatorioEntre, enteroEntre);
 
@@ -490,11 +491,13 @@ function elegirPozos(xInicio, xFin, esCentral, aleatorioEntre, enteroEntre, alea
   return pozos;
 }
 
-/* ---------- Estructuras sueltas: cuencos en U y repisas ----------
+/* ---------- Estructuras sueltas: cuencos en U con agua y repisas chicas ----------
    Un CUENCO es una U de paredes de 3 celdas (piedra por dentro, hielo por fuera)
-   con una cavidad semielíptica. Se llena de agua hasta una fracción al azar: los
-   hay vacíos, a medias y llenos hasta el borde. Una REPISA es una losa flotante
-   (hielo arriba, piedra por dentro). */
+   con una cavidad semielíptica. Se llena de agua hasta una fracción al azar:
+   desde poco más de un tercio hasta el borde. Una REPISA es una losa flotante
+   chica (hielo arriba, piedra por dentro): sirve para pararse o engancharse con la
+   lengua. Las repisas nunca quedan DEBAJO de un cuenco, así el agua de un cuenco
+   roto cae libre en vez de quedar atajada. */
 
 /* ¿Hay lugar para una estructura que ocupa [x0, x1] × [y0, y1] (con su margen de aire)? */
 function hayLugar(x0, y0, x1, y1) {
@@ -504,13 +507,12 @@ function hayLugar(x0, y0, x1, y1) {
   return rectanguloEsTodoAire(x0 - m, y0 - m, x1 + m, y1 + m);
 }
 
-/* Fracción de agua de un cuenco: bastante variada, con vacíos y llenos. */
+/* Fracción de agua de un cuenco: todos tienen agua, en distintas cantidades. */
 function sortearLlenado(aleatorio, aleatorioEntre) {
   const sorteo = aleatorio();
-  if (sorteo < 0.22) return 0;
-  if (sorteo < 0.45) return aleatorioEntre(0.15, 0.4);
-  if (sorteo < 0.75) return aleatorioEntre(0.5, 0.8);
-  return aleatorioEntre(0.9, 1);
+  if (sorteo < 0.3) return aleatorioEntre(0.35, 0.55);
+  if (sorteo < 0.7) return aleatorioEntre(0.55, 0.85);
+  return aleatorioEntre(0.85, 1);
 }
 
 const FORMA_U = 2.6; // exponente de la superelipse: 2 = elipse (cuenco chato), más alto = U más cuadrada
@@ -522,6 +524,7 @@ function colocarCuenco(centroX, filaBorde, mitadAncho, profundidad, llenado, ale
   const x0 = Math.floor(centroX - mitadAncho - grosor), x1 = Math.ceil(centroX + mitadAncho + grosor);
   const y0 = filaBorde, y1 = filaBorde + profundidad + grosor;
   if (!hayLugar(x0, y0, x1, y1)) return false;
+  columnasDeCuencos.push({ x0, x1, filaBorde }); // para no poner repisas debajo (ver colocarRepisa)
 
   const gradosAgua = aleatorioEntre(TEMPERATURA_MINIMA_BURBUJA, TEMPERATURA_MAXIMA_BURBUJA);
   const ambiente = PARAMETROS.temperaturaAmbiente;
@@ -551,19 +554,26 @@ function colocarCuenco(centroX, filaBorde, mitadAncho, profundidad, llenado, ale
   return true;
 }
 
-/* Repisa flotante: losa de ancho 2 × mitadAncho con el borde superior en "filaBorde". */
+/* Columnas que ocupa cada cuenco del mapa actual: debajo de ellas no van repisas. */
+let columnasDeCuencos = [];
+
+/* Repisa flotante chica: losa de ancho 2 × mitadAncho con el borde superior en
+   "filaBorde". No se pone si quedaría debajo de un cuenco (taparía su caída de agua)
+   ni si no hay lugar. */
 function colocarRepisa(centroX, filaBorde, mitadAncho, grosor, semilla) {
   const x0 = Math.floor(centroX - mitadAncho), x1 = Math.ceil(centroX + mitadAncho);
   const y0 = filaBorde - 1, y1 = filaBorde + grosor + 3;
-  if (!hayLugar(x0, y0, x1, y1)) return false;
+  const margen = 3; // el chorro de un cuenco roto se abre un poco al caer
+  const debajoDeUnCuenco = columnasDeCuencos.some(c => c.filaBorde < y0 && x1 >= c.x0 - margen && x0 <= c.x1 + margen);
+  if (debajoDeUnCuenco || !hayLugar(x0, y0, x1, y1)) return false;
 
   const ambiente = PARAMETROS.temperaturaAmbiente;
   for (let x = x0; x <= x1; x++) {
     const u = (x - centroX) / mitadAncho;
     if (Math.abs(u) > 1) continue;
     const rugosidad = ruidoSuave(x * 0.3, filaBorde * 0.1, semilla + 21) - 0.5;
-    const filaArriba = filaBorde + Math.round(Math.abs(u) ** 5 * 3 + rugosidad);
-    const filaAbajo = filaBorde + 2 + Math.round(grosor * Math.pow(1 - u * u, 0.7));
+    const filaArriba = filaBorde + Math.round(Math.abs(u) ** 5 * 2 + rugosidad);
+    const filaAbajo = filaBorde + 1 + Math.round(grosor * Math.pow(1 - u * u, 0.7));
     for (let y = filaArriba; y <= filaAbajo; y++) {
       const esHielo = y < filaArriba + 2 || y > filaAbajo - 1 || Math.abs(u) > 0.85;
       pintar(x, y, esHielo ? HIELO : PIEDRA, ambiente);
@@ -579,57 +589,63 @@ function sortearCuenco(aleatorioEntre, enteroEntre) {
   return { mitadAncho, profundidad };
 }
 
-/* Sobre cada plataforma de arranque puede haber (al azar): un cuenco con agua, un
-   cuenco vacío, una repisa o nada. Quedan por lo menos ESPACIO_SOBRE_ARENA filas
-   libres sobre las llamas. */
-function generarEstructurasSobreLaArena(aleatorioEntre, enteroEntre, aleatorio) {
-  const lugares = mapa.puntosDeAparicion.map(punto => ({ x: punto.x, fila: punto.filaBusqueda + 12 }));
-  const semilla = mapa.semilla;
-  for (const lugar of lugares) {
-    const sorteo = aleatorio();
-    const tipo = sorteo < 0.3 ? 'cuencoConAgua' : sorteo < 0.55 ? 'cuencoVacio' : sorteo < 0.8 ? 'repisa' : 'nada';
-    if (tipo === 'nada') continue;
-    for (let intento = 0; intento < 12; intento++) {
-      const centroX = lugar.x + aleatorioEntre(-16, 16);
-      // El borde inferior de la estructura queda entre 36 y 64 filas sobre el suelo
-      const filaInferior = lugar.fila - enteroEntre(ESPACIO_SOBRE_ARENA + 3, ESPACIO_SOBRE_ARENA + 31);
-      if (tipo === 'repisa') {
-        const grosor = enteroEntre(4, 8);
-        if (colocarRepisa(centroX, filaInferior - grosor - 3, enteroEntre(15, 40), grosor, semilla)) break;
-      } else {
-        const { mitadAncho, profundidad } = sortearCuenco(aleatorioEntre, enteroEntre);
-        const llenado = tipo === 'cuencoVacio' ? 0 : aleatorioEntre(0.6, 1);
-        if (colocarCuenco(centroX, filaInferior - profundidad - 3, mitadAncho, profundidad, llenado, aleatorioEntre)) break;
-      }
+/* ---------- Techos de roca sobre las llamas ----------
+   Encima de cada plataforma de arranque, una losa de roca (piedra) más chica que
+   la plataforma: protege a la llama del agua que cae desde arriba. Entre las dos
+   quedan ALTURA_BAJO_TECHO filas de aire para saltar, apuntar y moverse. Se pinta
+   con pintarSimetrico, así el techo de la plataforma espejada es idéntico. */
+const ALTURA_BAJO_TECHO = 22;            // filas de aire entre la plataforma y el techo
+const PROPORCION_ANCHO_TECHO = 0.6;      // el techo mide el 60% del ancho de la plataforma
+
+function generarTechosDeRoca(plataformas, enteroEntre) {
+  const ambiente = PARAMETROS.temperaturaAmbiente;
+  for (const plataforma of plataformas) {
+    const radioX = Math.max(6, plataforma.radioX * PROPORCION_ANCHO_TECHO);
+    const grosor = enteroEntre(4, 6);
+    const filaInferior = plataforma.filaSuperior - ALTURA_BAJO_TECHO; // borde de abajo del techo
+    for (let x = Math.floor(plataforma.centroX - radioX); x <= Math.ceil(plataforma.centroX + radioX); x++) {
+      if (x < 0 || x >= MITAD_ANCHO) continue;
+      const u = (x - plataforma.centroX) / radioX; // -1..1 a lo ancho del techo
+      if (Math.abs(u) > 1) continue;
+      // Abajo plano; arriba bombeado (más grueso en el centro, se afina hacia las puntas)
+      const filaArriba = filaInferior - Math.round(grosor * Math.pow(1 - u * u, 0.5));
+      for (let y = filaArriba; y <= filaInferior; y++) pintarSimetrico(x, y, PIEDRA, ambiente);
     }
   }
 }
 
-/* Estructuras repartidas por la zona alta y la zona baja, evitando la franja de la
-   arena (ahí solo van las que decide generarEstructurasSobreLaArena). */
+/* Cuencos con agua y repisas chicas repartidos por la zona alta y la zona baja,
+   evitando la franja de la arena (donde están las plataformas y sus techos de roca).
+   Primero van todos los cuencos y después las repisas, así cada repisa ya sabe
+   dónde hay cuencos y no se pone debajo de ninguno. */
 function generarEstructurasSueltas(aleatorioEntre, enteroEntre, aleatorio) {
   const semilla = mapa.semilla;
   const arribaDeLaArena = mapa.filaArenaMinima - ESPACIO_SOBRE_ARENA;  // las estructuras de la zona alta terminan acá
   const debajoDeLaArena = mapa.filaArenaMaxima + ESPACIO_BAJO_ARENA;   // y las de la zona baja empiezan acá
   const zonas = [
-    { desde: FILA_MINIMA_ESTRUCTURAS, hasta: arribaDeLaArena, cuencos: 14, repisas: 6 },
-    { desde: debajoDeLaArena, hasta: mapa.filaSuperiorLago - 50, cuencos: 5, repisas: 3 }
+    { desde: FILA_MINIMA_ESTRUCTURAS, hasta: arribaDeLaArena, cuencos: 18, repisas: 6 },
+    { desde: debajoDeLaArena, hasta: mapa.filaSuperiorLago - 50, cuencos: 7, repisas: 3 }
   ];
+  columnasDeCuencos = [];
   for (const zona of zonas) {
-    let cuencos = 0, repisas = 0, intentos = 0;
-    while ((cuencos < zona.cuencos || repisas < zona.repisas) && intentos++ < 500) {
+    let cuencos = 0, intentos = 0;
+    while (cuencos < zona.cuencos && intentos++ < 500) {
       const centroX = aleatorioEntre(MARGEN_ESTRUCTURAS, ANCHO_GRILLA - MARGEN_ESTRUCTURAS);
-      if (cuencos < zona.cuencos && (repisas >= zona.repisas || aleatorio() < 0.65)) {
-        const { mitadAncho, profundidad } = sortearCuenco(aleatorioEntre, enteroEntre);
-        const fila = Math.floor(aleatorioEntre(zona.desde, zona.hasta - profundidad - 3));
-        if (fila + profundidad + 3 > zona.hasta) continue;
-        if (colocarCuenco(centroX, fila, mitadAncho, profundidad, sortearLlenado(aleatorio, aleatorioEntre), aleatorioEntre)) cuencos++;
-      } else {
-        const grosor = enteroEntre(4, 8);
-        const fila = Math.floor(aleatorioEntre(zona.desde, zona.hasta - grosor - 4));
-        if (fila + grosor + 4 > zona.hasta) continue;
-        if (colocarRepisa(centroX, fila, enteroEntre(15, 45), grosor, semilla)) repisas++;
-      }
+      const { mitadAncho, profundidad } = sortearCuenco(aleatorioEntre, enteroEntre);
+      const fila = Math.floor(aleatorioEntre(zona.desde, zona.hasta - profundidad - 3));
+      if (fila + profundidad + 3 > zona.hasta) continue;
+      if (colocarCuenco(centroX, fila, mitadAncho, profundidad, sortearLlenado(aleatorio, aleatorioEntre), aleatorioEntre)) cuencos++;
+    }
+  }
+  for (const zona of zonas) {
+    let repisas = 0, intentos = 0;
+    while (repisas < zona.repisas && intentos++ < 500) {
+      const centroX = aleatorioEntre(MARGEN_ESTRUCTURAS, ANCHO_GRILLA - MARGEN_ESTRUCTURAS);
+      const grosor = enteroEntre(3, 5);
+      const fila = Math.floor(aleatorioEntre(zona.desde, zona.hasta - grosor - 4));
+      if (fila + grosor + 4 > zona.hasta) continue;
+      // Chicas: de 10 a 20 celdas de ancho (antes llegaban a 90)
+      if (colocarRepisa(centroX, fila, enteroEntre(5, 10), grosor, semilla)) repisas++;
     }
   }
 }

@@ -9,7 +9,7 @@
    decimales. Se ve en el panel de debug (P) y en la esquina de la pantalla de
    título, así se puede comprobar (por ejemplo en el celular, con GitHub Pages)
    qué versión se está ejecutando. */
-const VERSION = '0.03';
+const VERSION = '0.04';
 
 /* ---------- Tamaño del mundo ----------
    El mundo es una grilla de 320 x 540 celdas: alto y angosto, mucho más grande
