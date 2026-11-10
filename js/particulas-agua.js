@@ -105,20 +105,28 @@ function devolverAGrilla(gota) {
 /* Si la gota está dentro del hitbox de una llama: le hace daño, la empuja y SE
    EVAPORA (el fuego la convierte en vapor). Así cada gota daña una sola vez: sin
    esto seguiría cayendo, se juntaría en un charco alrededor de la llama y la
-   seguiría mojando hasta apagarla. Devuelve true si la gota se evaporó. */
+   seguiría mojando hasta apagarla. Devuelve true si la gota se evaporó.
+   Usa llamaEnCelda para hacer lookup espacial O(1) en vez de iterar sobre todas
+   las llamas en cada paso por cada gota. */
 function mojarLlamas(gota) {
-  for (const llama of llamas) {
-    if (!llama.vivo) continue;
-    const adentro = gota.x >= llama.x && gota.x <= llama.x + llama.ancho
-                 && gota.y >= llama.y && gota.y <= llama.y + llama.alto;
-    if (!adentro) continue;
+  const celdaX = Math.floor(gota.x);
+  const celdaY = Math.floor(gota.y);
+  if (celdaX < 0 || celdaX >= ANCHO_GRILLA || celdaY < 0 || celdaY >= ALTO_GRILLA) return false;
 
-    aplicarDanio(llama, PARAMETROS.danioPorGota * gota.masa); // una gota con menos agua moja menos
-    // Transferencia de impulso: la gota empuja a la llama en su dirección
-    llama.velocidadX += gota.velocidadX * 0.05;
-    llama.velocidadY += gota.velocidadY * 0.02;
-    crearVapor(gota.x, gota.y, 1); // nubecita y siseo
-    return true;
-  }
-  return false;
+  const indiceLlama = llamaEnCelda[celdaY * ANCHO_GRILLA + celdaX];
+  if (indiceLlama < 0) return false;
+
+  const llama = llamas[indiceLlama];
+  if (!llama || !llama.vivo) return false;
+
+  const adentro = gota.x >= llama.x && gota.x <= llama.x + llama.ancho
+               && gota.y >= llama.y && gota.y <= llama.y + llama.alto;
+  if (!adentro) return false;
+
+  aplicarDanio(llama, PARAMETROS.danioPorGota * gota.masa); // una gota con menos agua moja menos
+  // Transferencia de impulso: la gota empuja a la llama en su dirección
+  llama.velocidadX += gota.velocidadX * 0.05;
+  llama.velocidadY += gota.velocidadY * 0.02;
+  crearVapor(gota.x, gota.y, 1); // nubecita y siseo
+  return true;
 }

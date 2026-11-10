@@ -39,6 +39,10 @@ const celdaIndestructible = new Uint8Array(TOTAL_CELDAS);
    y el agua no se congela ahí, así nadie queda encerrado en un bloque. */
 const ocupadaPorLlama = new Uint8Array(TOTAL_CELDAS);
 
+/* Qué llama ocupa cada celda (-1 = ninguna, o número de llama 0..N).
+   Permite lookup espacial directo en O(1) para colisiones como mojarLlamas. */
+const llamaEnCelda = new Int8Array(TOTAL_CELDAS).fill(-1);
+
 /* Datos solo visuales, calculados al generar el mapa. */
 const texturaRuido = new Uint8Array(TOTAL_CELDAS);    // variación de brillo por celda
 const fondoRojo = new Uint8Array(TOTAL_CELDAS);       // color del fondo de la caverna

@@ -657,12 +657,17 @@ function aplicarCuracionPorMagma(llama, dt) {
 /* Marca qué celdas tapa cada llama (se recalcula en cada paso). */
 function marcarCeldasOcupadas() {
   ocupadaPorLlama.fill(0);
+  llamaEnCelda.fill(-1);
   for (const llama of llamas) {
     if (!llama.vivo) continue;
     for (let y = Math.floor(llama.y); y <= Math.floor(llama.y + llama.alto - EPSILON); y++) {
       if (y < 0 || y >= ALTO_GRILLA) continue;
       for (let x = Math.floor(llama.x); x <= Math.floor(llama.x + llama.ancho - EPSILON); x++) {
-        if (x >= 0 && x < ANCHO_GRILLA) ocupadaPorLlama[y * ANCHO_GRILLA + x] = 1;
+        if (x >= 0 && x < ANCHO_GRILLA) {
+          const indice = y * ANCHO_GRILLA + x;
+          ocupadaPorLlama[indice] = 1;
+          llamaEnCelda[indice] = llama.numero;
+        }
       }
     }
   }
