@@ -32,7 +32,7 @@ let llamas = [];
 class Llama {
   constructor(numero, equipo, x, y) {
     this.numero = numero;               // índice único en "llamas" (0, 1, 2...)
-    this.equipo = equipo;               // 0 = J1 (rojo), 1 = J2 (azul)
+    this.equipo = equipo;               // 0 = J1 (rojo), 1 = J2 (amarillo)
     this.paleta = PALETAS_JUGADORES[equipo];
     this.x = x;                         // esquina superior izquierda del hitbox (en celdas)
     this.y = y;

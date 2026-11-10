@@ -100,7 +100,7 @@ function dibujarPanelJugador(equipo, xAncla, y, unidad, alineadoDerecha) {
   ctx.textAlign = 'left';
   ctx.fillStyle = paleta.hud;
   ctx.font = fuente(unidad, 1.7, 700);
-  ctx.fillText(`${paleta.nombre} · Elemental ${equipo === 0 ? 'Rojo' : 'Azul'}`, xTexto, y + 2.3 * unidad);
+  ctx.fillText(`${paleta.nombre} · Elemental ${equipo === 0 ? 'Rojo' : 'Amarillo'}`, xTexto, y + 2.3 * unidad);
 
   // Barras de vida: el ancho total se reparte entre las llamas, con una separación entre ellas
   const anchoTotal = 14.5 * unidad, altoBarra = 1.3 * unidad, yBarra = y + 3.3 * unidad;

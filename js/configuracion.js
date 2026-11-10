@@ -230,6 +230,6 @@ const ORDEN_DE_MODOS = ['clasico', 'worms', 'tiempoReal']; // orden en el menú
 
 /* ---------- Colores de cada jugador ---------- */
 const PALETAS_JUGADORES = [
-  { nombre: 'J1', exterior: '#ff3d0f', medio: '#ff9a2e', nucleo: '#fff1b0', brillo: [255, 120, 30], hud: '#ff8a2a' },
-  { nombre: 'J2', exterior: '#11b5f0', medio: '#8ef3ff', nucleo: '#ffffff', brillo: [60, 220, 255], hud: '#4fe3ff' }
+  { nombre: 'J1', exterior: '#8c0a0a', medio: '#d4260f', nucleo: '#ff8a50', brillo: [200, 30, 20], hud: '#e03a24' },
+  { nombre: 'J2', exterior: '#ffc400', medio: '#ffe93d', nucleo: '#ffffe6', brillo: [255, 225, 50], hud: '#ffe040' }
 ];
