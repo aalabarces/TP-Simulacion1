@@ -114,7 +114,7 @@ real). En los modos por turnos, el jugador activo puede usar cualquiera de los d
 | Cargar y disparar (mantener) | F | Enter | Gatillo derecho (RT / R2) o B / ○ |
 | Arma anterior / siguiente (bola · bate · magma · lengua · mortero · jetpack) | Q / E | , / . | LB / RB (L1 / R1) |
 | Cambiar de llama (Worms) | Tab | Tab | Y / △ |
-| Volver al menú principal | Escape (o M) | Escape (o M) | ≡ (Start) o ⧉ (Back) |
+| Pausa (Continuar / Volver al menú principal) | Escape (o M) | Escape (o M) | ≡ (Start) o ⧉ (Back) |
 
 Con joysticks, el primero que se conecta es de J1 y el segundo de J2 (en los
 modos por turnos alcanza con uno). El navegador los reconoce recién cuando se
@@ -198,6 +198,8 @@ disparar, con **C** o tras 6 s sin tocarla.
 |---|---|
 | Enter / Start | Empezar, revancha |
 | ← / → o 1 / 2 / 3 (en el título) | Elegir modo de juego |
+| ↑ / ↓ o W / S, Enter / A (en pausa) | Elegir y aceptar una opción del menú de pausa |
+| Escape / Start / B (en pausa) | Continuar la partida |
 | M / Back (al terminar) | Volver al menú |
 | N | Sonido encendido / apagado |
 | P | Panel de debug con sliders |

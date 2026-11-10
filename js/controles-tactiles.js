@@ -10,6 +10,7 @@
      - Las armas se eligen tocando su ícono en el selector de abajo.
      - La cámara: arrastrar con un dedo la mueve, pellizcar con dos hace zoom.
      - En el menú se tocan las tarjetas de modo y el botón Empezar.
+     - ⏸ (a la derecha, arriba de pantalla completa) pausa; las opciones se tocan.
      - Solo están los modos por turnos (Tiempo real necesita dos jugadores a la
        vez y no entran en una pantalla de celular).
      - Con el celular vertical se pide girarlo: el juego es horizontal.
@@ -95,8 +96,10 @@ function actualizarControlesTactiles() {
   if (cuerpo.pantalla !== juego.pantalla) cuerpo.pantalla = juego.pantalla;
   const variasLlamas = juego.pantalla === 'jugando' && llamasPorEquipo() > 1 ? 'si' : 'no';
   if (cuerpo.variasLlamas !== variasLlamas) cuerpo.variasLlamas = variasLlamas;
-  // Al terminar la partida se sueltan todos (el dedo puede haber quedado sobre un botón)
-  if (juego.pantalla !== 'jugando') for (const nombre in botonesTactiles) botonesTactiles[nombre] = false;
+  const pausado = juego.pausado ? 'si' : 'no';
+  if (cuerpo.pausado !== pausado) cuerpo.pausado = pausado;
+  // Al terminar la partida o pausarla se sueltan todos (el dedo puede haber quedado sobre un botón)
+  if (juego.pantalla !== 'jugando' || juego.pausado) for (const nombre in botonesTactiles) botonesTactiles[nombre] = false;
   zonasTocables = []; // hud.js las vuelve a registrar al dibujar este cuadro
 }
 
@@ -133,7 +136,7 @@ function prepararToquesEnElLienzo() {
   });
 
   lienzo.addEventListener('pointermove', evento => {
-    if (!dedosEnElLienzo.has(evento.pointerId) || juego.pantalla !== 'jugando') return;
+    if (!dedosEnElLienzo.has(evento.pointerId) || juego.pantalla !== 'jugando' || juego.pausado) return;
     const anterior = dedosEnElLienzo.get(evento.pointerId);
     const punto = puntoEnLienzo(evento);
 

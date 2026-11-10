@@ -41,9 +41,10 @@ function dibujarHud(anchoPantalla, altoPantalla, unidad) {
     dibujarTemporizadorYViento(anchoPantalla, unidad);
     dibujarSelectoresDeArmas(anchoPantalla, altoPantalla, unidad);
   }
-  if (juego.cartel && juego.pantalla === 'jugando') dibujarCartel(anchoPantalla, altoPantalla, unidad);
+  if (juego.cartel && juego.pantalla === 'jugando' && !juego.pausado) dibujarCartel(anchoPantalla, altoPantalla, unidad);
   if (vista.grilla) dibujarContadorDeFps(unidad);
   if (juego.pantalla === 'titulo' || juego.pantalla === 'fin') dibujarPantallaSuperpuesta(anchoPantalla, altoPantalla, unidad);
+  if (juego.pausado) dibujarMenuPausa(anchoPantalla, altoPantalla, unidad);
   if (juego.pantalla === 'titulo') {
     // Número de versión (ver configuracion.js) y joysticks detectados, abajo a la derecha.
     // Si el navegador todavía no "vio" el joystick, se avisa que hay que apretar un botón.
@@ -426,6 +427,48 @@ function dibujarCartel(anchoPantalla, altoPantalla, unidad) {
   ctx.globalAlpha = 1;
 }
 
+/* ---------- Menú de pausa (Esc / Start durante la partida) ----------
+   Una tarjeta por opción (ver OPCIONES_PAUSA en turnos.js); la elegida se resalta
+   como las tarjetas de modo. En el celular se tocan. */
+function dibujarMenuPausa(anchoPantalla, altoPantalla, unidad) {
+  zonasTocables = []; // en pausa solo se pueden tocar las opciones (no las armas de abajo)
+  ctx.fillStyle = 'rgba(3,6,14,0.62)';
+  ctx.fillRect(0, 0, anchoPantalla, altoPantalla);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+
+  ctx.fillStyle = '#ffd38a';
+  ctx.font = fuente(unidad, 6, 900);
+  ctx.fillText('PAUSA', anchoPantalla / 2, altoPantalla * 0.34);
+
+  const anchoTarjeta = 28 * unidad, altoTarjeta = 5.5 * unidad, separacion = 1.5 * unidad;
+  const x = anchoPantalla / 2 - anchoTarjeta / 2;
+  const yInicial = altoPantalla * 0.34 + 4 * unidad;
+  OPCIONES_PAUSA.forEach((opcion, n) => {
+    const y = yInicial + n * (altoTarjeta + separacion);
+    const elegida = n === juego.opcionPausa;
+    registrarZonaTocable(x, y, anchoTarjeta, altoTarjeta, () => { juego.opcionPausa = n; aceptarOpcionPausa(); });
+    dibujarPanel(x, y, anchoTarjeta, altoTarjeta);
+    if (elegida) {
+      trazarRectanguloRedondeado(ctx, x, y, anchoTarjeta, altoTarjeta, altoTarjeta * 0.18);
+      ctx.strokeStyle = '#ffd38a';
+      ctx.lineWidth = 0.3 * unidad;
+      ctx.stroke();
+    }
+    ctx.fillStyle = elegida ? '#fff' : '#9fb2cc';
+    ctx.font = fuente(unidad, 2.2, elegida ? 800 : 600);
+    ctx.textBaseline = 'middle';
+    ctx.fillText(opcion.texto, anchoPantalla / 2, y + altoTarjeta / 2);
+    ctx.textBaseline = 'alphabetic';
+  });
+
+  if (esDispositivoTactil) return;
+  ctx.fillStyle = '#9fb2cc';
+  ctx.font = fuente(unidad, 1.5);
+  const yAyuda = yInicial + OPCIONES_PAUSA.length * (altoTarjeta + separacion) + 2 * unidad;
+  ctx.fillText('↑/↓ o W/S elegir · ENTER / A aceptar · ESC / ≡ / B continuar', anchoPantalla / 2, yAyuda);
+}
+
 /* ---------- Pantalla de título y de fin de partida ---------- */
 const AYUDA_TITULO_TACTIL = [
   '◀ ▶ mover · ⤒ saltar · ▲ ▼ ángulo · 🔥 mantener para cargar, soltar para disparar',
@@ -459,7 +502,7 @@ function dibujarPantallaSuperpuesta(anchoPantalla, altoPantalla, unidad) {
       'Bate (2.ª arma): disparar batea · Lengua (4.ª): disparar agarra / suelta · A/D balancea · W/S acorta / alarga',
       'Mortero (5.ª): cargar y soltar te lanza · Jetpack (6.ª): mantener disparar empuja hacia donde apuntás',
       'Por turnos se puede usar cualquiera de los controles · Tab cambia de llama (Worms)',
-      'P debug · 8 temperatura · 9 grilla · 0 nuevo mapa · N sonido · Esc menú'
+      'P debug · 8 temperatura · 9 grilla · 0 nuevo mapa · N sonido · Esc pausa'
     ];
     // La ayuda va entre las tarjetas de modo y "ENTER o START para empezar" (al 88% del
     // alto): si en esa franja no entran las líneas al tamaño normal, se achican.

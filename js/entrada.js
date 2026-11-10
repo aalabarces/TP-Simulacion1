@@ -25,7 +25,8 @@
 
    Otras teclas: Tab cambiar de llama (Worms) · P debug · N sonido ·
    8 vista de temperatura · 9 vista de grilla · 0 nuevo mapa ·
-   Escape (o M) volver al menú principal.
+   Escape (o M) pausa la partida (↑/↓ o W/S elegir, Enter aceptar, Escape
+   continuar); en la pantalla de fin, vuelve al menú principal.
    ============================================================================= */
 
 const ESQUEMAS_DE_TECLADO = [
@@ -103,6 +104,16 @@ function llamaQueManeja(jugador) {
 
 /* Acciones de un solo toque, vengan del teclado o de un joystick. */
 function ejecutarAccion(accion, jugador) {
+  // En pausa solo se maneja el menú de pausa (ver turnos.js)
+  if (juego.pausado) {
+    switch (accion) {
+      case 'aceptar': aceptarOpcionPausa(); break;
+      case 'menu': case 'continuar': continuarPartida(); break;
+      case 'opcionAnterior': elegirOpcionPausa(-1); break;
+      case 'opcionSiguiente': elegirOpcionPausa(1); break;
+    }
+    return;
+  }
   switch (accion) {
     case 'aceptar':
       if (juego.pantalla !== 'jugando') {
@@ -112,8 +123,9 @@ function ejecutarAccion(accion, jugador) {
       }
       break;
     case 'menu':
-      // Desde la partida o desde la pantalla de fin, al menú principal (con un mapa nuevo de fondo)
-      if (juego.pantalla !== 'titulo') { juego.pantalla = 'titulo'; prepararMundo(); }
+      // Jugando: pausa. En la pantalla de fin: al menú principal (con un mapa nuevo de fondo)
+      if (juego.pantalla === 'jugando') pausarPartida();
+      else if (juego.pantalla === 'fin') volverAlMenuPrincipal();
       break;
     case 'modoAnterior':
       if (juego.pantalla === 'titulo') elegirModo(-1);
@@ -178,7 +190,13 @@ window.addEventListener('keydown', evento => {
     case 'KeyC': recentrarCamara(); break;
     case 'Digit8': cambiarVista('temperatura', !vista.temperatura); break;
     case 'Digit9': cambiarVista('grilla', !vista.grilla); break;
-    case 'Digit0': if (juego.pantalla === 'jugando') empezarPartida(); else prepararMundo(); break;
+    case 'Digit0': if (juego.pausado) break; if (juego.pantalla === 'jugando') empezarPartida(); else prepararMundo(); break;
+  }
+
+  // Menú de pausa: elegir la opción con ↑/↓ o W/S
+  if (juego.pausado) {
+    if (evento.code === 'ArrowUp' || evento.code === 'KeyW') ejecutarAccion('opcionAnterior', jugador);
+    if (evento.code === 'ArrowDown' || evento.code === 'KeyS') ejecutarAccion('opcionSiguiente', jugador);
   }
 
   // Menú: elegir el modo con las flechas, A/D o el número de la tarjeta

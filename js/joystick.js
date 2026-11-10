@@ -160,11 +160,17 @@ function actualizarJoysticks() {
     if (recienApretado(BOTON.LB)) ejecutarAccion('armaAnterior', jugador);
     if (recienApretado(BOTON.RB)) ejecutarAccion('armaSiguiente', jugador);
     if (recienApretado(BOTON.Y)) ejecutarAccion('cambiarLlama', jugador);
-    // Start (≡): en el menú empieza; jugando o al terminar, vuelve al menú principal
+    // Start (≡): en el menú empieza; jugando pausa (o continúa); al terminar, vuelve al menú principal
     if (recienApretado(BOTON.START)) ejecutarAccion(juego.pantalla === 'titulo' ? 'aceptar' : 'menu', jugador);
     if (recienApretado(BOTON.BACK)) ejecutarAccion('menu', jugador);
-    // En las pantallas de título y fin: navegar con la cruz y aceptar con A
-    if (juego.pantalla !== 'jugando') {
+    if (juego.pausado) {
+      // Menú de pausa: cruz ↑ ↓ elegir, A aceptar, B continuar
+      if (recienApretado(BOTON.ARRIBA)) ejecutarAccion('opcionAnterior', jugador);
+      if (recienApretado(BOTON.ABAJO)) ejecutarAccion('opcionSiguiente', jugador);
+      if (recienApretado(BOTON.A)) ejecutarAccion('aceptar', jugador);
+      if (recienApretado(BOTON.B)) ejecutarAccion('continuar', jugador);
+    } else if (juego.pantalla !== 'jugando') {
+      // En las pantallas de título y fin: navegar con la cruz y aceptar con A
       if (recienApretado(BOTON.IZQUIERDA)) ejecutarAccion('modoAnterior', jugador);
       if (recienApretado(BOTON.DERECHA)) ejecutarAccion('modoSiguiente', jugador);
       if (recienApretado(BOTON.A)) ejecutarAccion('aceptar', jugador);

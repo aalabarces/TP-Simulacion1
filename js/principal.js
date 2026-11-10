@@ -51,9 +51,13 @@ function cuadro(instante) {
   // Segundos desde el cuadro anterior (máximo 0.1 s, por si la pestaña estuvo en pausa)
   const transcurrido = Math.min((instante - instanteAnterior) / 1000, 0.1);
   instanteAnterior = instante;
-  tiempoAcumulado += transcurrido;
-  tiempoTotal += transcurrido;
   actualizarJoysticks(); // leer los joysticks una vez por cuadro (ver joystick.js)
+  // En pausa no avanza la simulación ni las animaciones (tiempoTotal): el mundo queda congelado
+  if (juego.pausado) tiempoAcumulado = 0;
+  else {
+    tiempoAcumulado += transcurrido;
+    tiempoTotal += transcurrido;
+  }
 
   const inicioSimulacion = performance.now();
   let pasosHechos = 0;
@@ -65,7 +69,7 @@ function cuadro(instante) {
   if (pasosHechos === MAXIMO_PASOS_POR_CUADRO) tiempoAcumulado = 0; // descartar el atraso
   const finSimulacion = performance.now();
 
-  leerCamaraManual(transcurrido);
+  if (!juego.pausado) leerCamaraManual(transcurrido);
   actualizarCamara(transcurrido);
   actualizarControlesTactiles(); // botones visibles según la pantalla (ver controles-tactiles.js)
   dibujarCuadro();

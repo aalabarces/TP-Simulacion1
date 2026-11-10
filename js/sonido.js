@@ -461,7 +461,7 @@ function actualizarTonoDeCarga() {
   const t = sonido.contexto.currentTime;
   for (const llama of llamas) {
     const tono = sonido.cargas.get(llama.numero);
-    if (llama.cargando && juego.pantalla === 'jugando') {
+    if (llama.cargando && juego.pantalla === 'jugando' && !juego.pausado) {
       let actual = tono;
       if (!actual) {
         // Diente de sierra suavizado: suena como un "zumbido" que se va tensando
@@ -498,12 +498,13 @@ function actualizarSonidos() {
   actualizarTonoDeCarga();
 
   // Turbina del jetpack: suena mientras alguna llama está empujando
-  const propulsando = juego.pantalla === 'jugando' && llamas.some(llama => llama.vivo && llama.propulsando);
+  // En pausa se callan la carga, el jetpack y los ambientes (vuelven al continuar)
+  const jugando = juego.pantalla === 'jugando' && !juego.pausado;
+  const propulsando = jugando && llamas.some(llama => llama.vivo && llama.propulsando);
   sonido.jet.volumen.gain.setTargetAtTime(propulsando ? 0.16 : 0, t, 0.04);
   sonido.jet.filtro.frequency.setTargetAtTime(propulsando ? 700 + 250 * Math.sin(t * 17) : 500, t, 0.03);
 
   // Ambientes solo durante la partida, con volumen según el caudal y el viento
-  const jugando = juego.pantalla === 'jugando';
   const fuerzaCascada = jugando ? Math.min(1, caudalCascada() / 25) : 0;
   sonido.cascada.gain.setTargetAtTime(NIVEL_CASCADA * fuerzaCascada, t, 0.3);
   const fuerzaViento = jugando && PARAMETROS.vientoMaximo > 0 ? Math.min(1, Math.abs(viento) / PARAMETROS.vientoMaximo) : 0;

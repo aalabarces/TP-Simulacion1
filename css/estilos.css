@@ -80,14 +80,15 @@ html, body {
 /* ===== Controles táctiles (celular) =====
    Ocultos por defecto; controles-tactiles.js pone la clase "tactil" en el <body>
    y los atributos data-pantalla y data-varias-llamas para mostrar lo que corresponde. */
-#controles-tactiles, #botones-menu, #boton-pantalla-completa, #aviso-girar { display: none; }
+#controles-tactiles, #botones-menu, #boton-pausa, #boton-pantalla-completa, #aviso-girar { display: none; }
 
 body.tactil { touch-action: none; -webkit-user-select: none; user-select: none; }
-body.tactil[data-pantalla="jugando"] #controles-tactiles { display: block; }
+body.tactil[data-pantalla="jugando"]:not([data-pausado="si"]) #controles-tactiles,
+body.tactil[data-pantalla="jugando"]:not([data-pausado="si"]) #boton-pausa { display: block; }
 body.tactil:not([data-pantalla="jugando"]) #botones-menu { display: flex; }
 body.tactil #boton-pantalla-completa { display: block; }
 
-#controles-tactiles button, #botones-menu button, #boton-pantalla-completa {
+#controles-tactiles button, #botones-menu button, #boton-pausa, #boton-pantalla-completa {
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
   border: 2px solid rgba(255, 255, 255, .22);
@@ -128,7 +129,7 @@ body[data-varias-llamas="si"] .grupo-tactil .cambiar-llama { display: block; }
 body[data-pantalla="titulo"] #botones-menu .secundario { display: none; }
 body[data-pantalla="fin"] #botones-menu .principal::after { content: " de nuevo"; }
 
-#boton-pantalla-completa {
+#boton-pausa, #boton-pantalla-completa {
   position: fixed;
   top: 50%;
   right: max(8px, env(safe-area-inset-right));
@@ -136,6 +137,7 @@ body[data-pantalla="fin"] #botones-menu .principal::after { content: " de nuevo"
   font-size: 18px;
   border-radius: 8px;
 }
+#boton-pausa { margin-top: -50px; } /* justo arriba del de pantalla completa */
 
 /* Con el celular vertical se pide girarlo (el juego es horizontal) */
 #aviso-girar {

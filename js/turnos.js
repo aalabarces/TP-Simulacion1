@@ -3,6 +3,8 @@
    FLUJO DE LA PARTIDA
 
    Pantallas:  'titulo' (con selector de modo) -> 'jugando' -> 'fin'
+   Durante 'jugando', Esc (o Start) PAUSA la partida (juego.pausado): la simulación
+   se detiene y aparece un menú con Continuar / Volver al menú principal.
 
    Modos (ver MODOS_DE_JUEGO en configuracion.js):
      Clásico 1 vs 1   por turnos, una llama por jugador.
@@ -30,6 +32,8 @@
 
 const juego = {
   pantalla: 'titulo',
+  pausado: false,        // solo en 'jugando': la simulación no avanza y se ve el menú de pausa
+  opcionPausa: 0,        // índice en OPCIONES_PAUSA de la opción elegida
   modo: 'worms',         // clave de MODOS_DE_JUEGO
   fase: 'apuntar',
   equipoActual: 0,       // por turnos: 0 = J1, 1 = J2
@@ -95,6 +99,7 @@ function siguienteLlamaViva(equipo, despuesDe) {
 function empezarPartida() {
   prepararMundo();
   juego.pantalla = 'jugando';
+  juego.pausado = false;
   if (esTiempoReal()) {
     juego.fase = 'libre';
     juego.tiempoParaTerminar = -1;
@@ -268,6 +273,46 @@ function elegirModoPorNumero(numero) {
   if (modos[numero] === juego.modo) return;
   juego.modo = modos[numero];
   prepararMundo();
+}
+
+/* ---------- Pausa ---------- */
+
+const OPCIONES_PAUSA = [
+  { texto: 'Continuar', accion: () => continuarPartida() },
+  { texto: 'Volver al menú principal', accion: () => volverAlMenuPrincipal() }
+];
+
+function pausarPartida() {
+  if (juego.pantalla !== 'jugando' || juego.pausado) return;
+  juego.pausado = true;
+  juego.opcionPausa = 0; // siempre arranca en "Continuar"
+}
+
+function continuarPartida() {
+  if (!juego.pausado) return;
+  juego.pausado = false;
+  // La tecla o el botón que cerró la pausa (Enter, A) no cuenta como disparo ni salto
+  ignorarTeclasApretadas();
+  ignorarBotonesApretados();
+}
+
+/* Desde la partida (pausada) o desde la pantalla de fin, al menú principal
+   (con un mapa nuevo de fondo). */
+function volverAlMenuPrincipal() {
+  juego.pausado = false;
+  juego.pantalla = 'titulo';
+  prepararMundo();
+}
+
+/* Mover la opción elegida del menú de pausa (-1 arriba, +1 abajo), en círculo. */
+function elegirOpcionPausa(paso) {
+  if (!juego.pausado) return;
+  juego.opcionPausa = (juego.opcionPausa + paso + OPCIONES_PAUSA.length) % OPCIONES_PAUSA.length;
+  sonarCambioDeLlama();
+}
+
+function aceptarOpcionPausa() {
+  if (juego.pausado) OPCIONES_PAUSA[juego.opcionPausa].accion();
 }
 
 /* ---------- Lógica que corre en cada paso de simulación ---------- */

@@ -209,7 +209,7 @@ function dibujarCuadro() {
   const escala = pixelesPorCelda();
 
   // Temblor de cámara: desplazamiento aleatorio que se achica con el tiempo
-  const intensidadTemblor = juego.temblor * 1.2 * escala;
+  const intensidadTemblor = juego.pausado ? 0 : juego.temblor * 1.2 * escala;
   const temblorX = (Math.random() - 0.5) * intensidadTemblor;
   const temblorY = (Math.random() - 0.5) * intensidadTemblor;
 
