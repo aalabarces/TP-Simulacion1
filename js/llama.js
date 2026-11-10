@@ -371,7 +371,10 @@ function tensarCuerda(llama, dt, controles) {
   // El ancla desapareció (se derritió, la rompió una explosión...): se suelta
   const tipo = material[ancla.indice];
   if (!materialAgarrable(tipo)) { soltarLengua(llama); return; }
-  if (tipo === HIELO) temperatura[ancla.indice] += PARAMETROS.lenguaCalor * dt; // al pasar 0° se funde (temperatura.js)
+  if (tipo === HIELO) {
+    temperatura[ancla.indice] += PARAMETROS.lenguaCalor * dt; // al pasar 0° se funde (temperatura.js)
+    despertarCelda(ancla.indice); // el calor tiene que propagarse aunque el bloque esté dormido
+  }
 
   // Arriba acorta (trepar) y abajo alarga; solo con la lengua elegida (si no, esas teclas apuntan)
   if (controles && llama.arma === ARMA_LENGUA) {

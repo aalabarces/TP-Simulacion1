@@ -179,16 +179,7 @@ function aceptaAgua(indice, pasoActual) {
    y arriba (en ese orden). Se lee de masaAgua y se acumula en masaAguaNueva.
    Un flujo hacia una celda de AIRE solo cuenta si es al menos MASA_MINIMA
    (si no, la celda nacería ya vacía y se perdería esa agua). */
-/* Límites (en celdas) de un bloque, agrandados "margen" celdas para cada lado. */
-function limitesDeBloque(bloque, margen) {
-  const bx = bloque % BLOQUES_X, by = (bloque - bx) / BLOQUES_X;
-  return {
-    x1: Math.max(0, bx * TAMANIO_BLOQUE - margen),
-    x2: Math.min(ANCHO_GRILLA, (bx + 1) * TAMANIO_BLOQUE + margen), // x2 e y2 no incluidos
-    y1: Math.max(0, by * TAMANIO_BLOQUE - margen),
-    y2: Math.min(ALTO_GRILLA, (by + 1) * TAMANIO_BLOQUE + margen)
-  };
-}
+/* limitesDeBloque vive en grilla.js (se carga antes que este archivo y antes que temperatura.js). */
 
 function nivelarAgua(pasoActual) {
   // Bloques a calcular en este subpaso (se toma la lista al empezar)

@@ -129,6 +129,18 @@ function despertarTodo() {
   bloqueDespiertoProximo.fill(1);
 }
 
+/* Límites (en celdas) de un bloque, agrandados "margen" celdas para cada lado.
+   x2 e y2 no están incluidos (semiabiertos). Usada por fluidos.js y temperatura.js. */
+function limitesDeBloque(bloque, margen) {
+  const bx = bloque % BLOQUES_X, by = (bloque - bx) / BLOQUES_X;
+  return {
+    x1: Math.max(0, bx * TAMANIO_BLOQUE - margen),
+    x2: Math.min(ANCHO_GRILLA, (bx + 1) * TAMANIO_BLOQUE + margen),
+    y1: Math.max(0, by * TAMANIO_BLOQUE - margen),
+    y2: Math.min(ALTO_GRILLA, (by + 1) * TAMANIO_BLOQUE + margen)
+  };
+}
+
 /* Las llamas chocan con todo menos con el aire y el agua
    (el agua los moja, no los frena). */
 function esSolidoParaLlama(tipoMaterial) {
