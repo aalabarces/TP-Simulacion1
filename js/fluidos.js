@@ -43,6 +43,12 @@ const FLUJO_MINIMO = 0.004;      // flujos menores se ignoran: así el agua se d
 
 const PASOS_ENTRE_CONTEOS = 30; // las estadísticas del agua total se recalculan cada medio segundo
 
+/* Buffers de trabajo de nivelarAgua: se reúsan en cada subpaso para evitar
+   asignar arrays nuevos en cada llamada (hasta 480 veces por segundo con
+   subpasosAgua = 8). Se limpian con length = 0 al inicio de cada llamada. */
+const _bloquesNivelacion = [];
+const _celdasVaciandose = [];
+
 function simularFluidos() {
   const pasoActual = ++numeroDePaso;
   celdasDeAguaActivas = 0;
@@ -186,13 +192,13 @@ function limitesDeBloque(bloque, margen) {
 
 function nivelarAgua(pasoActual) {
   // Bloques a calcular en este subpaso (se toma la lista al empezar)
-  const bloques = [];
-  for (let b = 0; b < bloqueDespierto.length; b++) if (bloqueDespierto[b]) bloques.push(b);
-  if (bloques.length === 0) return;
+  _bloquesNivelacion.length = 0;
+  for (let b = 0; b < bloqueDespierto.length; b++) if (bloqueDespierto[b]) _bloquesNivelacion.push(b);
+  if (_bloquesNivelacion.length === 0) return;
 
   // Copia de trabajo: solo los bloques despiertos más 1 celda de borde, que es
   // hasta donde puede llegar un flujo (las vecinas de sus celdas).
-  for (const bloque of bloques) {
+  for (const bloque of _bloquesNivelacion) {
     const { x1, x2, y1, y2 } = limitesDeBloque(bloque, 1);
     for (let y = y1; y < y2; y++) {
       const fila = y * ANCHO_GRILLA;
@@ -201,9 +207,9 @@ function nivelarAgua(pasoActual) {
   }
 
   let flujosAplicados = 0;
-  const celdasVaciandose = []; // celdas que quedaron con muy poca agua (ver más abajo)
+  _celdasVaciandose.length = 0; // celdas que quedaron con muy poca agua (ver más abajo)
 
-  for (const bloque of bloques) {
+  for (const bloque of _bloquesNivelacion) {
     const { x1, x2, y1, y2 } = limitesDeBloque(bloque, 0);
     for (let y = y1; y < y2; y++) for (let x = x1; x < x2; x++) {
       const indice = y * ANCHO_GRILLA + x;
@@ -255,7 +261,7 @@ function nivelarAgua(pasoActual) {
         }
       }
 
-      if (masaAguaNueva[indice] < MASA_MINIMA && masaAguaNueva[indice] < masaAlEmpezar) celdasVaciandose.push(indice);
+      if (masaAguaNueva[indice] < MASA_MINIMA && masaAguaNueva[indice] < masaAlEmpezar) _celdasVaciandose.push(indice);
       // Si esta celda movió agua, su zona sigue despierta (incluye el bloque vecino si está en el borde)
       if (flujosAplicados !== flujosAntes) despertarCelda(indice);
     }
@@ -263,7 +269,7 @@ function nivelarAgua(pasoActual) {
 
   // Una celda que se vació casi del todo no se borra con su resto adentro (se
   // perdería agua): lo que le queda pasa a una vecina que tenga agua.
-  for (const indice of celdasVaciandose) {
+  for (const indice of _celdasVaciandose) {
     const resto = masaAguaNueva[indice];
     if (resto < MASA_MINIMA && resto > 0) {
       const x = indice % ANCHO_GRILLA;
@@ -280,7 +286,7 @@ function nivelarAgua(pasoActual) {
 
   // Aplicar (en la misma zona que se copió): una celda con masa pasa a ser AGUA;
   // con muy poca, se vacía. Si dos zonas se superponen, aplicar dos veces da lo mismo.
-  for (const bloque of bloques) {
+  for (const bloque of _bloquesNivelacion) {
     const { x1, x2, y1, y2 } = limitesDeBloque(bloque, 1);
     for (let y = y1; y < y2; y++) {
       for (let x = x1; x < x2; x++) {
