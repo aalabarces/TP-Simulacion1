@@ -23,6 +23,7 @@ function simularParticulasAgua(dt) {
   // Se recorre al revés para poder borrar partículas sin saltear ninguna
   for (let n = particulasAgua.length - 1; n >= 0; n--) {
     const gota = particulasAgua[n];
+    if (gota.deManguera) gota.edad += dt; // para no mojar enseguida a la llama que la tiró
     gota.velocidadY += PARAMETROS.gravedad * dt;
     if (!gota.deCascada) gota.velocidadX += aceleracionViento * dt; // las cascadas no las mueve el viento
     gota.velocidadX *= ROZAMIENTO_AIRE_AGUA;
@@ -122,11 +123,19 @@ function mojarLlamas(gota) {
   const adentro = gota.x >= llama.x && gota.x <= llama.x + llama.ancho
                && gota.y >= llama.y && gota.y <= llama.y + llama.alto;
   if (!adentro) return false;
+  // La gota de manguera recién salida no moja a la llama que la tiró
+  if (gota.deManguera && gota.numeroTirador === llama.numero && gota.edad < INMUNIDAD_PROPIA_AGUA) return false;
 
   aplicarDanio(llama, PARAMETROS.danioPorGota * gota.masa); // una gota con menos agua moja menos
   // Transferencia de impulso: la gota empuja a la llama en su dirección
-  llama.velocidadX += gota.velocidadX * 0.05;
-  llama.velocidadY += gota.velocidadY * 0.02;
+  if (gota.deManguera) {
+    // Chorro de manguera: impulso según la masa (el mismo que recibió la que disparó)
+    llama.velocidadX += gota.velocidadX * gota.masa / PARAMETROS.masaLlama;
+    llama.velocidadY += gota.velocidadY * gota.masa / PARAMETROS.masaLlama;
+  } else {
+    llama.velocidadX += gota.velocidadX * 0.05;
+    llama.velocidadY += gota.velocidadY * 0.02;
+  }
   crearVapor(gota.x, gota.y, 1); // nubecita y siseo
   return true;
 }

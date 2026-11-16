@@ -25,6 +25,7 @@ const sonido = {
   cascada: null,           // ambiente de las cascadas
   viento: null,            // ambiente del viento
   jet: null,               // turbina del jetpack
+  manguera: null,          // siseo del chorro de la manguera
   vaporPendiente: 0,       // vapor acumulado en este cuadro (se suena todo junto)
   chapoteosPendientes: 0,  // gotas que cayeron en este cuadro
   ultimoVapor: 0,
@@ -453,6 +454,14 @@ function crearAmbientes() {
   fuenteDeRuido(t).connect(filtroJet).connect(volumenJet);
   volumenJet.connect(sonido.salida);
   sonido.jet = { volumen: volumenJet, filtro: filtroJet };
+
+  // Manguera: siseo agudo de chorro de agua (franja de ruido alrededor de 2.5 kHz)
+  const filtroManguera = crearFiltro('bandpass', 2500, 0.7);
+  const volumenManguera = sonido.contexto.createGain();
+  volumenManguera.gain.value = 0;
+  fuenteDeRuido(t).connect(filtroManguera).connect(volumenManguera);
+  volumenManguera.connect(sonido.salida);
+  sonido.manguera = { volumen: volumenManguera, filtro: filtroManguera };
 }
 
 /* Un tono de carga por cada llama que está cargando (en tiempo real pueden ser
@@ -503,6 +512,10 @@ function actualizarSonidos() {
   const propulsando = jugando && llamas.some(llama => llama.vivo && llama.propulsando);
   sonido.jet.volumen.gain.setTargetAtTime(propulsando ? 0.16 : 0, t, 0.04);
   sonido.jet.filtro.frequency.setTargetAtTime(propulsando ? 700 + 250 * Math.sin(t * 17) : 500, t, 0.03);
+  // Chorro de la manguera: suena mientras alguna llama está rociando
+  const rociando = jugando && llamas.some(llama => llama.vivo && llama.rociando);
+  sonido.manguera.volumen.gain.setTargetAtTime(rociando ? 0.12 : 0, t, 0.04);
+  sonido.manguera.filtro.frequency.setTargetAtTime(rociando ? 2400 + 300 * Math.sin(t * 23) : 2500, t, 0.03);
 
   // Ambientes solo durante la partida, con volumen según el caudal y el viento
   const fuerzaCascada = jugando ? Math.min(1, caudalCascada() / 25) : 0;

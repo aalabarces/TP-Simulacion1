@@ -111,6 +111,20 @@ const PARAMETROS = {
   jetpackConsumo: 0.15,           // fracción del tanque por segundo (~6,7 s de empuje continuo)
   jetpackRecargaTiempoReal: 0.15, // tiempo real: fracción del tanque por segundo, apoyada en el suelo
 
+  /* Manguera (ver llama.js). El retroceso sale de la conservación de la cantidad de
+     movimiento: cada segundo salen "caudal" gotas de masa "masaGota" a "velocidad",
+     así que la llama (de masa masaLlama) recibe una aceleración hacia atrás de
+         a = caudal · masaGota · velocidad / masaLlama
+     Con 45 · 0.2 · 85 / 10 = 76.5 celdas/s²: menos que la gravedad (100), empuja y
+     frena caídas pero no permite volar. Cada gota le da al que moja el mismo impulso
+     (masaGota · v / masaLlama): acción y reacción. */
+  mangueraCaudal: 45,             // gotas por segundo
+  mangueraVelocidad: 85,          // celdas/s con las que sale el chorro
+  mangueraMasaGota: 0.2,          // masa de agua de cada gota (1 = una celda llena)
+  mangueraConsumo: 0.35,          // fracción del tanque por segundo (~2,9 s de chorro)
+  mangueraRecargaTiempoReal: 0.12, // tiempo real: fracción del tanque por segundo, sin rociar
+  masaLlama: 10,                  // masa de la llama, en las mismas unidades que el agua
+
   // Bate de béisbol (ver llama.js)
   bateVelocidad: 110,             // celdas/s con las que sale volando una llama SIN vida (el tope de vuelo es 120)
   bateVelocidadMinima: 45,        // celdas/s con las que sale volando una llama con la vida llena
@@ -174,6 +188,13 @@ const SLIDERS_DEBUG = [
   ['jetpackVelocidadMaxima', 'Velocidad máxima', 20, 120, 1],
   ['jetpackConsumo', 'Consumo (tanque/s)', 0.05, 1.5, 0.01],
   ['jetpackRecargaTiempoReal', 'Recarga tiempo real (tanque/s)', 0, 1, 0.01],
+  ['Manguera'],
+  ['mangueraCaudal', 'Caudal (gotas/s)', 5, 120, 1],
+  ['mangueraVelocidad', 'Velocidad del chorro', 20, 200, 1],
+  ['mangueraMasaGota', 'Masa de cada gota', 0.05, 1, 0.01],
+  ['mangueraConsumo', 'Consumo (tanque/s)', 0.05, 2, 0.01],
+  ['mangueraRecargaTiempoReal', 'Recarga tiempo real (tanque/s)', 0, 1, 0.01],
+  ['masaLlama', 'Masa de la llama', 1, 50, 0.5],
   ['Bate'],
   ['bateVelocidad', 'Velocidad a una llama sin vida', 30, 120, 1],
   ['bateVelocidadMinima', 'Velocidad a una llama sana', 0, 120, 1],

@@ -122,6 +122,8 @@ function empezarTurno(equipo) {
   juego.llamaBateada = null;
   for (const llama of llamas) {
     llama.combustible = 1;         // el tanque del jetpack se llena en cada turno
+    llama.aguaManguera = 1;        // y el de la manguera también
+    llama.usoLaManguera = false;
     soltarLengua(llama);           // la lengua de fuego se suelta al terminar el turno
     llama.enganchesSeguidos = 0;   // y los enganches arrancan de cero
   }
@@ -137,7 +139,7 @@ function empezarTurno(equipo) {
 function cambiarDeLlama() {
   if (esTiempoReal() || juego.pantalla !== 'jugando' || juego.fase !== 'apuntar') return;
   const actual = llamaActual();
-  if (actual && actual.cargando) return;
+  if (actual && (actual.cargando || actual.rociando)) return;
   const siguiente = siguienteLlamaViva(juego.equipoActual, juego.llamaActual);
   if (siguiente < 0 || siguiente === juego.llamaActual) return;
   juego.llamaActual = siguiente;
@@ -411,6 +413,14 @@ function actualizarApuntado(llama, dt, controles) {
   // El jetpack no carga ni dispara: empuja (ver llama.js)
   if (llama.arma === ARMA_JETPACK) return;
 
+  // La manguera no carga: mientras se mantiene disparar rocía (ver llama.js). Cuando
+  // deja de rociar (soltó, se vació el tanque o quedó aturdida) termina la ráfaga.
+  if (llama.arma === ARMA_MANGUERA) {
+    if (llama.rociando) llama.usoLaManguera = true;
+    else if (llama.usoLaManguera) terminarRociado(llama);
+    return;
+  }
+
   // El bate no carga: apretar disparar batea (ver llama.js)
   if (llama.arma === ARMA_BATE) {
     if (recienApretado && llama.recarga <= 0) batear(llama);
@@ -424,6 +434,18 @@ function actualizarApuntado(llama, dt, controles) {
   } else if (llama.cargando) {
     soltarCarga(llama);
   }
+}
+
+/* Fin de una ráfaga de la manguera. Por turnos cuenta como el disparo del turno: se
+   pasa a la fase de escape (la fase de asentando espera a que caigan las gotas) y la
+   próxima vez la llama arranca con la Bola de Fuego. En tiempo real no pasa nada más:
+   el límite lo pone el tanque, que se recarga de a poco. */
+function terminarRociado(llama) {
+  llama.usoLaManguera = false;
+  if (esTiempoReal() || juego.pantalla !== 'jugando' || juego.fase !== 'apuntar') return;
+  llama.arma = ARMA_BOLA_DE_FUEGO;
+  juego.fase = 'escape';
+  juego.tiempoEnFase = PARAMETROS.tiempoEscape;
 }
 
 /* Al soltar (o completar) la carga: con el mortero la llama se lanza a sí misma; con

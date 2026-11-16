@@ -21,7 +21,8 @@ const ARMA_MAGMA = 2;
 const ARMA_LENGUA = 3;     // no dispara: se agarra de una pared y balancea (ver más abajo)
 const ARMA_MORTERO = 4;    // no dispara: lanza a la propia llama como un proyectil
 const ARMA_JETPACK = 5;    // no dispara: empuja a la llama hacia donde apunta mientras haya combustible
-const CANTIDAD_ARMAS = 6;
+const ARMA_MANGUERA = 6;   // chorro de agua mientras se mantiene disparar; empuja hacia atrás a la que la usa
+const CANTIDAD_ARMAS = 7;
 
 const VIDA_MAXIMA = 100;
 const FRACCION_SUMERGIDA_SIN_DANIO = 0.2; // agua por los tobillos (~1 fila de 7) no daña
@@ -67,6 +68,12 @@ class Llama {
     this.combustible = 1;               // tanque del jetpack: 0 a 1
     this.propulsando = false;           // el jetpack está empujando en este paso
     this.tiempoBatazo = 0;              // segundos que quedan de la animación del bate
+    // Manguera
+    this.aguaManguera = 1;              // tanque de la manguera: 0 a 1
+    this.rociando = false;              // la manguera está echando agua en este paso
+    this.usoLaManguera = false;         // ya roció en esta ráfaga (al soltar, por turnos, termina el disparo)
+    this.gotasPendientes = 0;           // fracción de gota acumulada (el caudal no depende de los FPS)
+    this.mangueraVaciada = false;       // se vació rociando: hasta soltar disparar no vuelve a rociar
     // Caídas
     this.aturdida = 0;                  // segundos sin control después de un golpe fuerte
   }
@@ -462,6 +469,65 @@ function aplicarEmpujeDeJetpack(llama, dt) {
   crearEscape(llama.centroX - direccionX * 3, llama.centroY - direccionY * 3, -direccionX, -direccionY);
 }
 
+/* ---------- Manguera ----------
+   Mantener disparar echa un chorro de gotas de agua (partículas comunes de
+   particulas-agua.js: caen, las lleva el viento, mojan llamas, solidifican el
+   magma y al chocar vuelven a la grilla como agua) mientras quede agua en el
+   tanque. Por conservación de la cantidad de movimiento, cada gota que sale le
+   da a la llama un impulso hacia atrás:
+       Δv = masaGota · velocidadGota / masaLlama
+   En promedio es una aceleración de caudal · masaGota · velocidad / masaLlama
+   (ver PARAMETROS en configuracion.js), menor que la gravedad: no se puede volar.
+   Por turnos, soltar disparar (o vaciar el tanque) termina el disparo del turno
+   (ver actualizarApuntado en turnos.js). */
+const DISPERSION_MANGUERA = 6;      // grados: el chorro sale entre -3° y +3° de la mira
+const INMUNIDAD_PROPIA_AGUA = 0.25; // segundos en que la gota no moja a la llama que la tiró
+
+/* ¿Puede rociar ahora? En tiempo real siempre; por turnos solo mientras apunta
+   (en la fase de escape la llama se mueve pero ya no dispara). */
+function puedeRociar() {
+  return esTiempoReal() || (juego.pantalla === 'jugando' && juego.fase === 'apuntar');
+}
+
+/* Punta de la manguera: 3.5 celdas por delante del centro, fuera del hitbox. */
+function boquillaDeManguera(llama, direccionX, direccionY) {
+  return { x: llama.centroX + direccionX * 3.5, y: llama.centroY - 1 + direccionY * 3.5 };
+}
+
+function rociarConManguera(llama, dt) {
+  const anguloRadianes = llama.angulo * Math.PI / 180;
+  const direccionX = Math.cos(anguloRadianes) * llama.mirando;
+  const direccionY = -Math.sin(anguloRadianes);
+  const boquilla = boquillaDeManguera(llama, direccionX, direccionY);
+  const masa = PARAMETROS.mangueraMasaGota;
+
+  llama.gotasPendientes += PARAMETROS.mangueraCaudal * dt;
+  while (llama.gotasPendientes >= 1) {
+    llama.gotasPendientes -= 1;
+    if (particulasAgua.length >= MAXIMO_PARTICULAS_AGUA) continue;
+    const angulo = (llama.angulo + (Math.random() - 0.5) * DISPERSION_MANGUERA) * Math.PI / 180;
+    const rapidez = PARAMETROS.mangueraVelocidad * (0.9 + Math.random() * 0.2);
+    const velocidadX = Math.cos(angulo) * llama.mirando * rapidez;
+    const velocidadY = -Math.sin(angulo) * rapidez;
+    particulasAgua.push({
+      x: boquilla.x, y: boquilla.y,
+      velocidadX, velocidadY,
+      masa,
+      celdaOrigen: -1,            // no nació de una celda de la grilla
+      grados: 5,                  // agua fresca: tarda un rato en congelarse
+      deManguera: true,           // empuja a la llama que moja según su masa (ver mojarLlamas)
+      numeroTirador: llama.numero,
+      edad: 0
+    });
+    // Retroceso: el mismo impulso que se llevó la gota, en sentido contrario
+    llama.velocidadX -= velocidadX * masa / PARAMETROS.masaLlama;
+    llama.velocidadY -= velocidadY * masa / PARAMETROS.masaLlama;
+  }
+  llama.aguaManguera = Math.max(0, llama.aguaManguera - PARAMETROS.mangueraConsumo * dt);
+  if (llama.aguaManguera <= 0) llama.mangueraVaciada = true;
+  if (Math.random() < 0.3) crearChispas(boquilla.x, boquilla.y, 1, '170,215,255'); // rocío en la boquilla
+}
+
 /* ---------- Bate de béisbol ----------
    Como en Worms: no se carga, se apunta y se batea. Golpea a TODAS las llamas que
    estén al alcance delante de la llama (rivales o del mismo equipo) y las manda a
@@ -542,12 +608,20 @@ function actualizarLlama(llama, dt, controles) {
   // Jetpack: empuja con el arma elegida, disparar apretado, combustible y sin estar mojada
   const empujando = llama.arma === ARMA_JETPACK && !!controles && controles.cargar && llama.combustible > 0 && !enAgua;
   llama.propulsando = empujando;
+  // Manguera: rocía con el arma elegida, disparar apretado y agua en el tanque (también bajo el agua)
+  // Si el tanque se vació hay que soltar disparar antes de volver a rociar (en tiempo
+  // real, si no, lo poquito que se recarga saldría enseguida como un chorrito)
+  if (!controles || !controles.cargar) llama.mangueraVaciada = false;
+  const rociando = llama.arma === ARMA_MANGUERA && !!controles && controles.cargar && !llama.mangueraVaciada
+                && llama.aguaManguera > 0 && llama.recarga <= 0 && puedeRociar();
+  llama.rociando = rociando;
+  if (!rociando) llama.gotasPendientes = 0;
   // Lanzada por el mortero: vuela rápido hasta aterrizar o caer al agua
   if (llama.lanzada) {
     llama.tiempoLanzada += dt;
     if (enAgua || (llama.enSuelo && llama.tiempoLanzada > 0.15)) llama.lanzada = false;
   }
-  const volandoRapido = colgada || llama.lanzada || empujando;
+  const volandoRapido = colgada || llama.lanzada || empujando || rociando;
 
   // --- Movimiento horizontal ---
   // Con stick, "mover" puede ser intermedio: solo importa el sentido (el movimiento
@@ -596,6 +670,12 @@ function actualizarLlama(llama, dt, controles) {
   if (empujando) aplicarEmpujeDeJetpack(llama, dt);
   else if (llama.enSuelo && esTiempoReal()) {
     llama.combustible = Math.min(1, llama.combustible + PARAMETROS.jetpackRecargaTiempoReal * dt);
+  }
+
+  // --- Manguera: chorro, retroceso y tanque ---
+  if (rociando) rociarConManguera(llama, dt);
+  else if (esTiempoReal()) {
+    llama.aguaManguera = Math.min(1, llama.aguaManguera + PARAMETROS.mangueraRecargaTiempoReal * dt);
   }
 
   // --- Gravedad (en el agua pesa menos y hay mucho rozamiento) ---

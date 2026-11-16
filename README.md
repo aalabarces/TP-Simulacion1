@@ -112,7 +112,7 @@ real). En los modos por turnos, el jugador activo puede usar cualquiera de los d
 | Saltar | Espacio | Shift derecho | A / ✕ |
 | Apuntar | W / S | ↑ / ↓ | Stick derecho o izquierdo ↑ ↓, o cruz ↑ ↓ |
 | Cargar y disparar (mantener) | F | Enter | Gatillo derecho (RT / R2) o B / ○ |
-| Arma anterior / siguiente (bola · bate · magma · lengua · mortero · jetpack) | Q / E | , / . | LB / RB (L1 / R1) |
+| Arma anterior / siguiente (bola · bate · magma · lengua · mortero · jetpack · manguera) | Q / E | , / . | LB / RB (L1 / R1) |
 | Cambiar de llama (Worms) | Tab | Tab | Y / △ |
 | Pausa (Continuar / Volver al menú principal) | Escape (o M) | Escape (o M) | ≡ (Start) o ⧉ (Back) |
 
@@ -180,6 +180,25 @@ quede combustible: unos 3 s de empuje continuo, que dan para subir ~150 celdas.
 - La barra de combustible está sobre la llama. Sin combustible en el aire, te
   caés (y la caída fuerte aturde).
 - No termina el turno: podés volar y después disparar con otra arma.
+
+### Manguera
+
+Séptima arma. **Mantener disparar** echa un chorro de agua hacia donde apunta
+(W / S giran el ángulo) mientras quede agua en el tanque (~3 s). Las gotas son
+partículas de agua comunes: caen, las lleva el viento, mojan y empujan a las
+llamas que tocan, solidifican el magma y al chocar quedan como agua en el mapa.
+
+- **Retroceso** por conservación de la cantidad de movimiento: cada gota que sale
+  le da a la llama un impulso hacia atrás `Δv = masaGota · v / masaLlama`. En
+  promedio es una aceleración `caudal · masaGota · v / masaLlama` = 45 · 0,2 · 85 / 10
+  ≈ 76 celdas/s², menor que la gravedad: te hace patinar (mucho en el hielo) y
+  frena las caídas apuntando abajo, pero no sirve para volar.
+- Cada gota empuja a la llama que moja con ese mismo impulso (acción y reacción)
+  y le saca `danioPorGota · masaGota` de vida. No te moja a vos.
+- Funciona también bajo el agua.
+- Por turnos, **al soltar** (o vaciar el tanque) termina el disparo del turno. En
+  tiempo real el tanque se recarga de a poco (0,12/s) mientras no rociás.
+- Todo se ajusta en el panel de debug (sección "Manguera").
 
 ### Cámara
 

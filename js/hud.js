@@ -241,6 +241,8 @@ const AYUDA_JETPACK =
   'Jetpack: mantené Disparar (F o Enter) para empujar hacia donde apuntás · W/S ángulo · A/D cambiar de lado en vuelo · el agua lo apaga';
 const AYUDA_BATE =
   'Bate: acercate, apuntá con W/S y apretá Disparar (F o Enter) · manda a volar a quien tengas delante · termina el turno';
+const AYUDA_MANGUERA =
+  'Manguera: mantené Disparar (F o Enter) para rociar agua · W/S ángulo · el chorro te empuja hacia atrás · al soltar termina el turno';
 const AYUDA_TECLAS_TIEMPO_REAL = [
   'J1: A/D mover · Espacio saltar · W/S apuntar · F disparar · Q/E arma',
   'J2: ←/→ mover · Shift der. saltar · ↑/↓ apuntar · Enter disparar · ,/. arma'
@@ -278,7 +280,7 @@ function dibujarSelectoresDeArmas(anchoPantalla, altoPantalla, unidad) {
   ctx.fillStyle = 'rgba(200,215,235,0.55)';
   ctx.font = fuente(unidad, 1.05);
   const ayudaCambio = llamasPorEquipo() > 1 ? ' · Tab cambiar llama' : '';
-  const ayudaPorArma = { [ARMA_LENGUA]: AYUDA_LENGUA, [ARMA_MORTERO]: AYUDA_MORTERO, [ARMA_JETPACK]: AYUDA_JETPACK, [ARMA_BATE]: AYUDA_BATE };
+  const ayudaPorArma = { [ARMA_LENGUA]: AYUDA_LENGUA, [ARMA_MORTERO]: AYUDA_MORTERO, [ARMA_JETPACK]: AYUDA_JETPACK, [ARMA_BATE]: AYUDA_BATE, [ARMA_MANGUERA]: AYUDA_MANGUERA };
   const ayuda = ayudaPorArma[llama.arma] || `${AYUDA_TECLAS_POR_TURNOS}${ayudaCambio} · ángulo ${Math.round(llama.angulo)}°`;
   ctx.fillText(ayuda, anchoPantalla / 2, y - 0.8 * unidad);
 }
@@ -292,7 +294,10 @@ ARMAS_DEL_SELECTOR[ARMA_MAGMA] = { nombre: 'Escupir Magma', detalle: 'barrera / 
 ARMAS_DEL_SELECTOR[ARMA_LENGUA] = { nombre: 'Lengua de Fuego', detalle: 'agarra y balancea' };
 ARMAS_DEL_SELECTOR[ARMA_MORTERO] = { nombre: 'Mortero', detalle: 'te lanza por el aire' };
 ARMAS_DEL_SELECTOR[ARMA_JETPACK] = { nombre: 'Jetpack', detalle: 'empuja con combustible' };
-const ANCHO_BOTON_CHICO = 5, ANCHO_BOTON_ELEGIDO = 15.5, SEPARACION_BOTONES = 0.8; // en unidades del HUD
+ARMAS_DEL_SELECTOR[ARMA_MANGUERA] = { nombre: 'Manguera', detalle: 'agua + retroceso' };
+// En unidades del HUD. En tiempo real entran dos selectores en el ancho (100 unidades):
+// 2 × (6 × 4.2 + 15.5 + 6 × 0.8) + márgenes ≈ 93
+const ANCHO_BOTON_CHICO = 4.2, ANCHO_BOTON_ELEGIDO = 15.5, SEPARACION_BOTONES = 0.8;
 
 function anchoDelSelectorDeArmas(unidad) {
   const cantidadChicos = CANTIDAD_ARMAS - 1;
@@ -399,6 +404,20 @@ function dibujarIconoDeArma(numeroArma, xIcono, yIcono, unidad) {
     ctx.beginPath();
     ctx.moveTo(xIcono - 0.5 * unidad, yIcono + 0.5 * unidad); ctx.lineTo(xIcono + 0.5 * unidad, yIcono + 0.5 * unidad);
     ctx.lineTo(xIcono, yIcono + 1.7 * unidad); ctx.closePath(); ctx.fill();
+  } else if (numeroArma === ARMA_MANGUERA) {
+    // Una boquilla gris inclinada con tres gotas que salen de la punta
+    ctx.strokeStyle = '#2f7fd8'; ctx.lineWidth = 0.5 * unidad;
+    ctx.beginPath(); ctx.moveTo(xIcono - 1.4 * unidad, yIcono + 1.2 * unidad);
+    ctx.quadraticCurveTo(xIcono - 1.3 * unidad, yIcono + 0.2 * unidad, xIcono - 0.7 * unidad, yIcono + 0.3 * unidad);
+    ctx.stroke();
+    ctx.strokeStyle = '#8a96aa'; ctx.lineWidth = 0.8 * unidad;
+    ctx.beginPath(); ctx.moveTo(xIcono - 0.8 * unidad, yIcono + 0.35 * unidad); ctx.lineTo(xIcono + 0.1 * unidad, yIcono - 0.3 * unidad); ctx.stroke();
+    ctx.fillStyle = '#9ad7ff';
+    for (let n = 0; n < 3; n++) {
+      ctx.beginPath();
+      ctx.arc(xIcono + (0.6 + n * 0.45) * unidad, yIcono + (-0.7 - n * 0.3 + (n === 1 ? 0.25 : 0)) * unidad, (0.32 - n * 0.05) * unidad, 0, Math.PI * 2);
+      ctx.fill();
+    }
   } else if (numeroArma === ARMA_BATE) {
     // Un bate en diagonal (mango fino abajo, cabeza gruesa arriba) y una pelotita
     dibujarBate(ctx, xIcono - 1.3 * unidad, yIcono + 1.3 * unidad, -Math.PI / 4, 3.2 * unidad);
@@ -501,6 +520,7 @@ function dibujarPantallaSuperpuesta(anchoPantalla, altoPantalla, unidad) {
       '🎮 Joystick: stick mover · A saltar · stick ↑↓ apuntar · RT o B disparar · LB/RB arma · Y llama · ≡ menú',
       'Bate (2.ª arma): disparar batea · Lengua (4.ª): disparar agarra / suelta · A/D balancea · W/S acorta / alarga',
       'Mortero (5.ª): cargar y soltar te lanza · Jetpack (6.ª): mantener disparar empuja hacia donde apuntás',
+      'Manguera (7.ª): mantener disparar rocía agua · el chorro te empuja hacia atrás',
       'Por turnos se puede usar cualquiera de los controles · Tab cambia de llama (Worms)',
       'P debug · 8 temperatura · 9 grilla · 0 nuevo mapa · N sonido · Esc pausa'
     ];

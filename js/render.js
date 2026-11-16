@@ -498,6 +498,7 @@ function dibujarMiraDeBate(llama) {
 function dibujarMira(llama) {
   if (llama.arma === ARMA_LENGUA) { dibujarMiraDeLengua(llama); return; }
   if (llama.arma === ARMA_JETPACK) { dibujarMiraDeJetpack(llama); return; }
+  if (llama.arma === ARMA_MANGUERA) { dibujarMiraDeManguera(llama); return; }
   if (llama.arma === ARMA_BATE) { dibujarMiraDeBate(llama); return; }
   if (llama.arma === ARMA_MORTERO && llama.cargando) dibujarTrayectoriaDeMortero(llama);
   const anguloRadianes = llama.angulo * Math.PI / 180;
@@ -662,6 +663,38 @@ function dibujarMiraDeJetpack(llama) {
   degrade.addColorStop(1, '#ffe066');
   ctx.fillStyle = llama.combustible > 0.15 ? degrade : '#ff3b1f';
   ctx.fillRect(xBarra, yBarra, anchoBarra * llama.combustible, 1.4);
+}
+
+/* Manguera: puntos celestes hacia donde sale el chorro, una flechita tenue hacia
+   atrás (el retroceso) y la barra del tanque de agua sobre la llama. */
+function dibujarMiraDeManguera(llama) {
+  const anguloRadianes = llama.angulo * Math.PI / 180;
+  const direccionX = Math.cos(anguloRadianes) * llama.mirando, direccionY = -Math.sin(anguloRadianes);
+  const origenX = llama.centroX, origenY = llama.centroY - 1;
+  const conAgua = llama.aguaManguera > 0;
+
+  ctx.fillStyle = conAgua ? 'rgba(150,210,255,0.85)' : 'rgba(200,210,225,0.3)';
+  for (let d = 5; d <= 15; d += 2.2) {
+    ctx.beginPath(); ctx.arc(origenX + direccionX * d, origenY + direccionY * d, 0.4, 0, Math.PI * 2); ctx.fill();
+  }
+  // Retroceso: flechita hacia atrás, detrás de la llama
+  const puntaX = origenX - direccionX * 7, puntaY = origenY - direccionY * 7;
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 0.35; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(origenX - direccionX * 4, origenY - direccionY * 4); ctx.lineTo(puntaX, puntaY);
+  ctx.moveTo(puntaX + direccionX * 1.4 - direccionY * 1, puntaY + direccionY * 1.4 + direccionX * 1);
+  ctx.lineTo(puntaX, puntaY);
+  ctx.lineTo(puntaX + direccionX * 1.4 + direccionY * 1, puntaY + direccionY * 1.4 - direccionX * 1);
+  ctx.stroke();
+
+  const anchoBarra = 10, xBarra = llama.centroX - anchoBarra / 2, yBarra = llama.y - 5.5;
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(xBarra, yBarra, anchoBarra, 1.4);
+  const degrade = ctx.createLinearGradient(xBarra, 0, xBarra + anchoBarra, 0);
+  degrade.addColorStop(0, '#2f7fd8');
+  degrade.addColorStop(1, '#9ad7ff');
+  ctx.fillStyle = llama.aguaManguera > 0.15 ? degrade : '#2f7fd8';
+  ctx.fillRect(xBarra, yBarra, anchoBarra * llama.aguaManguera, 1.4);
 }
 
 /* Tres estrellitas que giran sobre la cabeza de una llama aturdida. */

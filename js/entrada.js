@@ -152,7 +152,7 @@ function ejecutarAccion(accion, jugador) {
 
 /* Se puede cambiar de arma mientras se apunta y sin estar cargando un disparo. */
 function puedeCambiarDeArma(llama) {
-  if (!llama || !llama.vivo || juego.pantalla !== 'jugando' || llama.cargando) return false;
+  if (!llama || !llama.vivo || juego.pantalla !== 'jugando' || llama.cargando || llama.rociando) return false;
   return MODOS_DE_JUEGO[juego.modo].tiempoReal || juego.fase === 'apuntar';
 }
 
