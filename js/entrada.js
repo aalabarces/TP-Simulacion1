@@ -95,11 +95,47 @@ function leerControles(jugador) {
   return { mover: limitar(mover, -1, 1), apuntar: limitar(apuntar, -1, 1), saltar, cargar };
 }
 
-/* ¿Qué llama maneja este jugador ahora? En Tiempo real, la suya; en los modos
-   por turnos, la del turno (para cualquier jugador). */
-function llamaQueManeja(jugador) {
-  if (MODOS_DE_JUEGO[juego.modo].tiempoReal) return llamasDelEquipo(jugador)[0];
-  return llamaActual();
+/* ---------- De los dispositivos a los comandos ----------
+   La simulación solo lee comandosDelPaso (ver comandos.js). Acá se llenan con lo que
+   hay en los dispositivos locales, UNA VEZ por paso de simulación. */
+
+/* ¿A qué equipo le llegan los controles de este jugador? En Tiempo real, a su equipo;
+   en los modos por turnos, al equipo que tiene el turno (cualquier control sirve). */
+function equipoQueControla(jugador) {
+  if (MODOS_DE_JUEGO[juego.modo].tiempoReal) return jugador === CUALQUIER_JUGADOR ? 0 : jugador;
+  return juego.equipoActual;
+}
+
+/* Acciones de un solo toque (y arma elegida con un toque) que ocurrieron desde el último
+   paso: esperan acá hasta que muestrearControlesLocales las pone en el comando. */
+const accionesPendientes = [0, 0];
+const armaElegidaPendiente = [-1, -1];
+
+function pedirAccion(bit, jugador) {
+  if (juego.pantalla === 'jugando') accionesPendientes[equipoQueControla(jugador)] |= bit;
+}
+
+/* Tocar el ícono de un arma en el HUD (celular). Mismas reglas que Q / E. */
+function pedirArma(llama, numeroArma) {
+  if (puedeCambiarDeArma(llama) && llama.arma !== numeroArma) armaElegidaPendiente[llama.equipo] = numeroArma;
+}
+
+/* Llena comandosDelPaso con los dispositivos locales. Se llama justo antes de cada
+   simularPaso. Por turnos solo el equipo con el turno tiene controles. */
+function muestrearControlesLocales() {
+  const tiempoReal = MODOS_DE_JUEGO[juego.modo].tiempoReal;
+  for (let equipo = 0; equipo < comandosDelPaso.length; equipo++) {
+    if (tiempoReal || equipo === juego.equipoActual) {
+      const comando = leerControles(tiempoReal ? equipo : CUALQUIER_JUGADOR);
+      comando.acciones = accionesPendientes[equipo];
+      comando.elegirArma = armaElegidaPendiente[equipo];
+      asignarComando(equipo, comando);
+    } else {
+      asignarComando(equipo, comandoVacio());
+    }
+    accionesPendientes[equipo] = 0;
+    armaElegidaPendiente[equipo] = -1;
+  }
 }
 
 /* Acciones de un solo toque, vengan del teclado o de un joystick. */
@@ -133,27 +169,12 @@ function ejecutarAccion(accion, jugador) {
     case 'modoSiguiente':
       if (juego.pantalla === 'titulo') elegirModo(1);
       break;
-    case 'cambiarLlama':
-      cambiarDeLlama();
-      break;
-    case 'armaAnterior':
-    case 'armaSiguiente': {
-      // Recorre las armas en círculo: después de la última viene la primera (y al revés)
-      const llama = llamaQueManeja(jugador);
-      const paso = accion === 'armaSiguiente' ? 1 : -1;
-      if (puedeCambiarDeArma(llama)) {
-        llama.arma = (llama.arma + paso + CANTIDAD_ARMAS) % CANTIDAD_ARMAS;
-        sonarCambioDeLlama();
-      }
-      break;
-    }
+    // Estas tres cambian el estado de la simulación: no se ejecutan acá sino que viajan
+    // como comando en el próximo paso (ver comandos.js, aplicarAccionesDelPaso)
+    case 'cambiarLlama': pedirAccion(ACCION_CAMBIAR_LLAMA, jugador); break;
+    case 'armaAnterior': pedirAccion(ACCION_ARMA_ANTERIOR, jugador); break;
+    case 'armaSiguiente': pedirAccion(ACCION_ARMA_SIGUIENTE, jugador); break;
   }
-}
-
-/* Se puede cambiar de arma mientras se apunta y sin estar cargando un disparo. */
-function puedeCambiarDeArma(llama) {
-  if (!llama || !llama.vivo || juego.pantalla !== 'jugando' || llama.cargando || llama.rociando) return false;
-  return MODOS_DE_JUEGO[juego.modo].tiempoReal || juego.fase === 'apuntar';
 }
 
 /* Jugador al que pertenece una tecla (por su esquema), o CUALQUIER_JUGADOR. */

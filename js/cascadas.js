@@ -78,8 +78,8 @@ function simularCascadas(dt) {
   while (cascada.gotasPendientes >= 1 && particulasAgua.length < MAXIMO_PARTICULAS_AGUA - 2) {
     cascada.gotasPendientes -= 1;
     // Un poco de dispersión: el chorro sale con 1-2 celdas de ancho y un leve empuje hacia el centro
-    const corrimiento = Math.random() * 1.5;
-    const empuje = 2 + Math.random() * 4;
+    const corrimiento = azarSim() * 1.5;
+    const empuje = 2 + azarSim() * 4;
     crearGotaDeCascada(cascada.xIzquierda + 0.5 + corrimiento, empuje, masaPorGota);  // sale hacia la derecha
     crearGotaDeCascada(cascada.xDerecha + 0.5 - corrimiento, -empuje, masaPorGota);   // sale hacia la izquierda
   }
@@ -170,7 +170,7 @@ function repartirEnElLago(gota) {
   // forme se corrige solo, como en un lago de verdad.
   let mejorIndice = -1, mejorFila = -1;
   for (let intento = 0; intento < COLUMNAS_A_PROBAR; intento++) {
-    const columna = Math.floor(cascada.columnaInicial + 1 + Math.random() * (ANCHO_GRILLA - 2 * cascada.columnaInicial - 2));
+    const columna = Math.floor(cascada.columnaInicial + 1 + azarSim() * (ANCHO_GRILLA - 2 * cascada.columnaInicial - 2));
     const fila = superficieDelLago(columna);
     if (fila > mejorFila) { mejorFila = fila; mejorIndice = indiceDeCelda(columna, fila); }
   }

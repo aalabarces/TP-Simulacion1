@@ -76,7 +76,7 @@ function mostrarCartel(texto, color) {
    Si cambia de sentido (de izquierda a derecha o al revés) suena una ráfaga. */
 function sortearViento() {
   const anterior = viento;
-  const valor = (Math.random() * 2 - 1) * PARAMETROS.vientoMaximo;
+  const valor = (azarSim() * 2 - 1) * PARAMETROS.vientoMaximo;
   viento = Math.round(valor * 20) / 20;
   const cambioDeSentido = Math.sign(viento) !== 0 && Math.sign(viento) !== Math.sign(anterior);
   if (cambioDeSentido) sonarCambioDeViento(viento);
@@ -96,8 +96,8 @@ function siguienteLlamaViva(equipo, despuesDe) {
 
 /* ---------- Inicio de partida y de turno ---------- */
 
-function empezarPartida() {
-  prepararMundo();
+function empezarPartida(semilla) {
+  prepararMundo(semilla); // online: las dos PCs pasan la misma semilla (la del anfitrión)
   juego.pantalla = 'jugando';
   juego.pausado = false;
   if (esTiempoReal()) {
@@ -221,11 +221,29 @@ function terminarTurno() {
 
 /* ---------- Armado del mundo y menú ---------- */
 
+/* Estado de la simulación que no es parte del mapa pero cambia el resultado: el contador
+   de pasos (su paridad define el sentido de recorrido del agua), qué celdas ya se
+   movieron en qué paso y los buffers de trabajo. La pantalla de título simula todo el
+   tiempo, así que sin reiniciarlo cada PC llegaría a la partida con valores distintos
+   y las simulaciones online se separarían. */
+function reiniciarEstadoOcultoDeLaSimulacion() {
+  numeroDePaso = 0;
+  pasoEnQueSeMovio.fill(0);
+  masaAguaNueva.fill(0);
+  temperaturaNueva.set(temperatura);
+  ocupadaPorLlama.fill(0);
+  llamaEnCelda.fill(-1);
+  despertarTodo();
+}
+
 /* Crea mapa y llamas nuevas según el modo (sin empezar la partida: también
    sirve de fondo para la pantalla de título). */
 function prepararMundo(semilla) {
   const semillaFinal = semilla === undefined ? Math.floor(Math.random() * 1e9) : semilla;
+  // El azar de la simulación (gotas, viento, magma...) arranca de la misma semilla en las dos PCs
+  iniciarAzarSim(Math.imul(semillaFinal | 0, 0x9E3779B1) ^ 0x5bd1e995);
   generarMapa(semillaFinal, CANTIDAD_JUGADORES * llamasPorEquipo());
+  reiniciarEstadoOcultoDeLaSimulacion();
   prepararCascadas();
   prepararViento();
   particulasAgua = [];
@@ -255,7 +273,7 @@ function sortearLadosDeCadaPar(cantidadDePares) {
   if (cantidadDePares < 2) return [false];
   let invertidos;
   do {
-    invertidos = Array.from({ length: cantidadDePares }, () => Math.random() < 0.5);
+    invertidos = Array.from({ length: cantidadDePares }, () => azarSim() < 0.5);
   } while (invertidos.every(valor => valor === invertidos[0]));
   return invertidos;
 }
@@ -335,7 +353,7 @@ function actualizarPorTurnos(dt) {
   const llama = llamaActual();
   if (juego.fase === 'apuntar') {
     juego.tiempoTurnoRestante -= dt;
-    if (llama && llama.vivo) actualizarApuntado(llama, dt, leerControles(CUALQUIER_JUGADOR));
+    if (llama && llama.vivo) actualizarApuntado(llama, dt, comandoDelEquipo(juego.equipoActual));
     if (juego.fase === 'apuntar' && juego.tiempoTurnoRestante <= 0) {
       mostrarCartel('¡Se acabó el tiempo!', '#ffd38a');
       pasarAFaseAsentando();
@@ -358,7 +376,7 @@ function actualizarPorTurnos(dt) {
 function actualizarTiempoReal(dt) {
   // Cada llama apunta y dispara con los controles de su jugador
   for (const llama of llamas) {
-    if (llama.vivo) actualizarApuntado(llama, dt, leerControles(llama.equipo));
+    if (llama.vivo) actualizarApuntado(llama, dt, comandoDelEquipo(llama.equipo));
   }
 
   // El viento cambia cada tanto

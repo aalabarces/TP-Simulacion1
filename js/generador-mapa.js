@@ -356,7 +356,7 @@ function generarPlataformas(semilla, cantidadPlataformas, aleatorioEntre, entero
       const rugosidad = (ruidoSuave(x * 0.35, 9.1, semilla) - 0.5);
       const filaArriba = plataforma.filaSuperior + Math.round(distanciaAlCentro ** 6 * 4 + rugosidad);
       // Base redondeada: cuelga más en el centro (1 - u²)
-      const filaAbajo = plataforma.filaSuperior + plataforma.grosorHielo + 2 + Math.round(plataforma.profundidad * Math.pow(1 - u * u, 0.7));
+      const filaAbajo = plataforma.filaSuperior + plataforma.grosorHielo + 2 + Math.round(plataforma.profundidad * potenciaDet(1 - u * u, 0.7));
 
       for (let y = filaArriba; y <= filaAbajo; y++) {
         // Hielo solo en la capa de arriba (el piso); el resto, hasta la base, es piedra
@@ -371,7 +371,7 @@ function generarPlataformas(semilla, cantidadPlataformas, aleatorioEntre, entero
       const u = aleatorioEntre(-0.6, 0.6);
       const x = Math.round(plataforma.centroX + u * plataforma.radioX);
       if (x < 0 || x >= MITAD_ANCHO) continue;
-      const filaBase = plataforma.filaSuperior + plataforma.grosorHielo + 2 + Math.round(plataforma.profundidad * Math.pow(1 - u * u, 0.7));
+      const filaBase = plataforma.filaSuperior + plataforma.grosorHielo + 2 + Math.round(plataforma.profundidad * potenciaDet(1 - u * u, 0.7));
       pintarEstalactita(x, filaBase + 1, enteroEntre(3, 7), aleatorioEntre(1.2, 2.4), true);
     }
   }
@@ -415,7 +415,7 @@ function pintarBordesDePlataforma(plataforma) {
     // Desde la superficie de la rampa hasta debajo de la capa de hielo (que en las puntas
     // está hasta 4 filas más abajo): todo piedra, sin pasarse de la base de la plataforma
     const u = (x - plataforma.centroX) / plataforma.radioX;
-    const filaBase = plataforma.filaSuperior + plataforma.grosorHielo + 2 + Math.round(plataforma.profundidad * Math.pow(1 - u * u, 0.7));
+    const filaBase = plataforma.filaSuperior + plataforma.grosorHielo + 2 + Math.round(plataforma.profundidad * potenciaDet(1 - u * u, 0.7));
     const filaFondo = Math.min(filaBase, plataforma.filaSuperior + 5 + plataforma.grosorHielo);
     for (let y = plataforma.filaSuperior - altura; y <= filaFondo; y++) pintarSimetrico(x, y, PIEDRA, ambiente);
   }
@@ -587,12 +587,12 @@ function colocarCuenco(centroX, filaBorde, mitadAncho, profundidad, llenado, ale
       const px = x + 0.5, py = y + 0.5;
       const uExterior = (px - centroX) / (mitadAncho + grosor);
       if (Math.abs(uExterior) >= 1) continue;
-      const fondoExterior = filaBorde + (profundidad + grosor) * Math.pow(1 - Math.pow(Math.abs(uExterior), FORMA_U), 1 / FORMA_U);
+      const fondoExterior = filaBorde + (profundidad + grosor) * potenciaDet(1 - potenciaDet(Math.abs(uExterior), FORMA_U), 1 / FORMA_U);
       if (py > fondoExterior) continue;
 
       const uInterior = (px - centroX) / mitadAncho;
       const hayCavidad = Math.abs(uInterior) < 1;
-      const fondoInterior = hayCavidad ? filaBorde + profundidad * Math.pow(1 - Math.pow(Math.abs(uInterior), FORMA_U), 1 / FORMA_U) : -1;
+      const fondoInterior = hayCavidad ? filaBorde + profundidad * potenciaDet(1 - potenciaDet(Math.abs(uInterior), FORMA_U), 1 / FORMA_U) : -1;
       if (hayCavidad && py < fondoInterior) {
         if (py >= filaSuperficie) pintar(x, y, AGUA, gradosAgua);
         continue;
@@ -600,7 +600,7 @@ function colocarCuenco(centroX, filaBorde, mitadAncho, profundidad, llenado, ale
       // Pared: piedra, con una capa de hielo por fuera solo en la mitad de ARRIBA
       // (la parte de abajo es roca pelada, con alguna estalactita colgando)
       const vExterior = (py - filaBorde) / (profundidad + grosor);
-      const radio = Math.pow(Math.pow(Math.abs(uExterior), FORMA_U) + Math.pow(vExterior, FORMA_U), 1 / FORMA_U);
+      const radio = potenciaDet(potenciaDet(Math.abs(uExterior), FORMA_U) + potenciaDet(vExterior, FORMA_U), 1 / FORMA_U);
       const capaDeHielo = 1.5 / Math.min(mitadAncho + grosor, profundidad + grosor);
       const esHielo = radio > 1 - capaDeHielo && vExterior < 0.5;
       pintar(x, y, esHielo ? HIELO : PIEDRA, ambiente);
@@ -638,7 +638,7 @@ function colocarRepisa(centroX, filaBorde, mitadAncho, grosor, semilla) {
     if (Math.abs(u) > 1) continue;
     const rugosidad = ruidoSuave(x * 0.3, filaBorde * 0.1, semilla + 21) - 0.5;
     const filaArriba = filaBorde + Math.round(Math.abs(u) ** 5 * 2 + rugosidad);
-    const filaAbajo = filaBorde + 1 + Math.round(grosor * Math.pow(1 - u * u, 0.7));
+    const filaAbajo = filaBorde + 1 + Math.round(grosor * potenciaDet(1 - u * u, 0.7));
     for (let y = filaArriba; y <= filaAbajo; y++) {
       const esHielo = y < filaArriba + 2 || y > filaAbajo - 1 || Math.abs(u) > 0.85;
       pintar(x, y, esHielo ? HIELO : PIEDRA, ambiente);
@@ -679,16 +679,16 @@ function generarTechosDeRoca(plataformas, enteroEntre) {
         const px = x + 0.5, py = y + 0.5;
         const uExterior = (px - centroX) / (mitadAncho + grosor);
         if (Math.abs(uExterior) >= 1) continue;
-        const fondoExterior = filaBorde + (profundidad + grosor) * Math.pow(1 - Math.pow(Math.abs(uExterior), FORMA_U), 1 / FORMA_U);
+        const fondoExterior = filaBorde + (profundidad + grosor) * potenciaDet(1 - potenciaDet(Math.abs(uExterior), FORMA_U), 1 / FORMA_U);
         if (py > fondoExterior) continue;
         const uInterior = (px - centroX) / mitadAncho;
         if (Math.abs(uInterior) < 1) {
-          const fondoInterior = filaBorde + profundidad * Math.pow(1 - Math.pow(Math.abs(uInterior), FORMA_U), 1 / FORMA_U);
+          const fondoInterior = filaBorde + profundidad * potenciaDet(1 - potenciaDet(Math.abs(uInterior), FORMA_U), 1 / FORMA_U);
           if (py < fondoInterior) continue; // la cavidad queda vacía
         }
         // Roca, con hielo afuera solo en la mitad de arriba (como los cuencos con agua)
         const vExterior = (py - filaBorde) / (profundidad + grosor);
-        const radio = Math.pow(Math.pow(Math.abs(uExterior), FORMA_U) + Math.pow(vExterior, FORMA_U), 1 / FORMA_U);
+        const radio = potenciaDet(potenciaDet(Math.abs(uExterior), FORMA_U) + potenciaDet(vExterior, FORMA_U), 1 / FORMA_U);
         const esHielo = radio > 1 - 1.5 / Math.min(mitadAncho + grosor, profundidad + grosor) && vExterior < 0.5;
         pintarSimetrico(x, y, esHielo ? HIELO : PIEDRA, ambiente);
       }

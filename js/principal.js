@@ -14,14 +14,17 @@
      (también cargando), mientras el proyectil vuela y durante el tiempo de escape. */
 function controlesDeLaLlama(llama) {
   if (juego.pantalla !== 'jugando' || !llama.vivo) return null;
-  if (MODOS_DE_JUEGO[juego.modo].tiempoReal) return leerControles(llama.equipo);
+  if (MODOS_DE_JUEGO[juego.modo].tiempoReal) return comandoDelEquipo(llama.equipo);
   const esSuTurno = llama.numero === juego.llamaActual;
   const faseConMovimiento = juego.fase === 'apuntar' || juego.fase === 'vuelo' || juego.fase === 'escape';
-  return esSuTurno && faseConMovimiento ? leerControles(CUALQUIER_JUGADOR) : null;
+  return esSuTurno && faseConMovimiento ? comandoDelEquipo(juego.equipoActual) : null;
 }
 
-/* Un paso de simulación: el orden importa. */
+/* Un paso de simulación: el orden importa. Lee SOLO los comandos (comandos.js), que
+   quedaron cargados antes de llamarla: en el juego local los llena
+   muestrearControlesLocales (entrada.js), online los de la red. */
 function simularPaso(dt) {
+  aplicarAccionesDelPaso();     // cambiar de llama / de arma (un solo toque)
   marcarCeldasOcupadas();       // dónde están las llamas (para magma y congelamiento)
   simularTemperatura(dt);       // difusión de calor + cambios de estado
   simularFluidos();             // autómata celular del agua y el magma (Euleriano)
@@ -62,6 +65,7 @@ function cuadro(instante) {
   const inicioSimulacion = performance.now();
   let pasosHechos = 0;
   while (tiempoAcumulado >= PASO_SIMULACION && pasosHechos < MAXIMO_PASOS_POR_CUADRO) {
+    muestrearControlesLocales();   // dispositivos locales → comandos de este paso
     simularPaso(PASO_SIMULACION);
     tiempoAcumulado -= PASO_SIMULACION;
     pasosHechos++;

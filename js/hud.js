@@ -310,9 +310,7 @@ function dibujarSelectorDeArmas(llama, xInicial, y, altoBoton, unidad) {
     const elegida = llama.arma === numeroArma;
     const anchoBoton = (elegida ? ANCHO_BOTON_ELEGIDO : ANCHO_BOTON_CHICO) * unidad;
     // En el celular, tocar el ícono elige el arma (con las mismas reglas que Q / .)
-    registrarZonaTocable(x, y, anchoBoton, altoBoton, () => {
-      if (puedeCambiarDeArma(llama) && llama.arma !== numeroArma) { llama.arma = numeroArma; sonarCambioDeLlama(); }
-    });
+    registrarZonaTocable(x, y, anchoBoton, altoBoton, () => pedirArma(llama, numeroArma));
     dibujarPanel(x, y, anchoBoton, altoBoton);
     if (elegida) {
       trazarRectanguloRedondeado(ctx, x, y, anchoBoton, altoBoton, altoBoton * 0.18);

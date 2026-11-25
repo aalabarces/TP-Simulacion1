@@ -133,7 +133,7 @@ function convertirEnParticula(x, y, indice, pasoActual) {
     if (masa >= MASA_MINIMA) {
       particulasAgua.push({
         x: x + 0.5, y: y + 0.5,                   // centro de la celda
-        velocidadX: (Math.random() - 0.5) * 3,    // un poco de dispersión lateral
+        velocidadX: (azarSim() - 0.5) * 3,        // un poco de dispersión lateral
         velocidadY: 2,
         masa,
         celdaOrigen: indice,                      // ver la reserva al inicio de simularFluidos
@@ -333,8 +333,8 @@ function actualizarMagma(x, y, indice, pasoActual) {
   }
 
   // 3) Escurrirse de costado de vez en cuando (es espeso)
-  if (Math.random() < PARAMETROS.fluidezMagma) {
-    const lado = Math.random() < 0.5 ? -1 : 1;
+  if (azarSim() < PARAMETROS.fluidezMagma) {
+    const lado = azarSim() < 0.5 ? -1 : 1;
     const xVecino = x + lado;
     if (xVecino >= 0 && xVecino < ANCHO_GRILLA) {
       const indiceVecino = indice + lado;

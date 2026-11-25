@@ -21,8 +21,8 @@ function disparar(tirador) {
   const anguloRadianes = tirador.angulo * Math.PI / 180;
   // Con potencia 0 sale al 12% y con potencia 1 al 100%
   const rapidez = PARAMETROS.potenciaMaxima * (POTENCIA_MINIMA + (1 - POTENCIA_MINIMA) * tirador.potencia);
-  const direccionX = Math.cos(anguloRadianes) * tirador.mirando;
-  const direccionY = -Math.sin(anguloRadianes);
+  const direccionX = cosenoDet(anguloRadianes) * tirador.mirando;
+  const direccionY = -senoDet(anguloRadianes);
 
   proyectiles.push({
     // Sale 3 celdas por delante del centro de la llama para no chocar consigo misma
@@ -105,7 +105,7 @@ function explotar(p, x, y) {
   } else {
     // El charco de magma se corre 1.5 celdas hacia atrás de la trayectoria,
     // así queda apoyado SOBRE la superficie y no metido adentro.
-    const rapidez = Math.hypot(p.velocidadX, p.velocidadY) || 1;
+    const rapidez = hipotDet(p.velocidadX, p.velocidadY) || 1;
     explotarMagma(x - p.velocidadX / rapidez * 1.5, y - p.velocidadY / rapidez * 1.5);
   }
   alTerminarElDisparo();
@@ -185,7 +185,7 @@ function empujarLlamas(x, y, radio, excluida) {
   for (const llama of llamas) {
     if (llama === excluida) continue;
     const dx = llama.centroX - x, dy = llama.centroY - y;
-    const distanciaAlCentro = Math.hypot(dx, dy);
+    const distanciaAlCentro = hipotDet(dx, dy);
     if (distanciaAlCentro >= radio || distanciaAlCentro < 0.01) continue;
     const intensidad = 1 - distanciaAlCentro / radio;
     // (dx, dy) / distancia = dirección unitaria desde la explosión hacia la llama

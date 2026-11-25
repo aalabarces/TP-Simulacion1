@@ -255,7 +255,7 @@ function moverConColisiones(llama, dt) {
    retenerPorSegundo = 0.2 significa que después de 1 s queda el 20% de la velocidad.
    En un paso de dt segundos queda retenerPorSegundo ^ dt. */
 function frenarExponencial(velocidad, retenerPorSegundo, dt) {
-  return velocidad * Math.pow(retenerPorSegundo, dt);
+  return velocidad * potenciaDet(retenerPorSegundo, dt);
 }
 
 /* ---------- Caídas ----------
@@ -314,8 +314,8 @@ function manoDeLaLlama(llama) {
    donde terminó el intento (para dibujarlo). */
 function buscarAnclaDeLengua(llama) {
   const anguloRadianes = llama.angulo * Math.PI / 180;
-  const direccionX = Math.cos(anguloRadianes) * llama.mirando;
-  const direccionY = -Math.sin(anguloRadianes);
+  const direccionX = cosenoDet(anguloRadianes) * llama.mirando;
+  const direccionY = -senoDet(anguloRadianes);
   const mano = manoDeLaLlama(llama);
   const alcance = PARAMETROS.lenguaLargoMaximo;
   let distanciaRecorrida = 0;
@@ -391,7 +391,7 @@ function tensarCuerda(llama, dt, controles) {
 
   const mano = manoDeLaLlama(llama);
   const dx = mano.x - ancla.x, dy = mano.y - ancla.y;
-  const distanciaAlAncla = Math.hypot(dx, dy);
+  const distanciaAlAncla = hipotDet(dx, dy);
   if (distanciaAlAncla >= llama.largoCuerda - 0.05 && distanciaAlAncla > 0.001) {
     const normalX = dx / distanciaAlAncla, normalY = dy / distanciaAlAncla; // del ancla hacia la llama
     const alejamiento = llama.velocidadX * normalX + llama.velocidadY * normalY;
@@ -408,7 +408,7 @@ function corregirPosicionPorCuerda(llama) {
   const ancla = llama.ancla;
   const mano = manoDeLaLlama(llama);
   const dx = mano.x - ancla.x, dy = mano.y - ancla.y;
-  const distanciaAlAncla = Math.hypot(dx, dy);
+  const distanciaAlAncla = hipotDet(dx, dy);
   const exceso = distanciaAlAncla - llama.largoCuerda;
   if (exceso <= 0.01) return;
   const nuevaX = llama.x - dx / distanciaAlAncla * exceso, nuevaY = llama.y - dy / distanciaAlAncla * exceso;
@@ -426,8 +426,8 @@ function corregirPosicionPorCuerda(llama) {
    turno, no tiene límite de usos y el aterrizaje no aturde (ver aturdirPorCaida). */
 function lanzarseConMortero(llama) {
   const anguloRadianes = llama.angulo * Math.PI / 180;
-  const direccionX = Math.cos(anguloRadianes) * llama.mirando;
-  const direccionY = -Math.sin(anguloRadianes);
+  const direccionX = cosenoDet(anguloRadianes) * llama.mirando;
+  const direccionY = -senoDet(anguloRadianes);
   const rapidez = PARAMETROS.morteroVelocidad * (POTENCIA_MINIMA + (1 - POTENCIA_MINIMA) * llama.potencia);
 
   soltarLengua(llama);
@@ -451,14 +451,14 @@ function lanzarseConMortero(llama) {
    tiempo real se recarga de a poco, apoyada en el suelo). El agua lo apaga. */
 function aplicarEmpujeDeJetpack(llama, dt) {
   const anguloRadianes = llama.angulo * Math.PI / 180;
-  const direccionX = Math.cos(anguloRadianes) * llama.mirando;
-  const direccionY = -Math.sin(anguloRadianes);
-  const rapidezAntes = Math.hypot(llama.velocidadX, llama.velocidadY);
+  const direccionX = cosenoDet(anguloRadianes) * llama.mirando;
+  const direccionY = -senoDet(anguloRadianes);
+  const rapidezAntes = hipotDet(llama.velocidadX, llama.velocidadY);
 
   llama.velocidadX += direccionX * PARAMETROS.jetpackEmpuje * dt;
   llama.velocidadY += direccionY * PARAMETROS.jetpackEmpuje * dt;
   // El empuje no acelera más allá del tope (si ya iba más rápido, por un lanzamiento, no la frena)
-  const rapidezDespues = Math.hypot(llama.velocidadX, llama.velocidadY);
+  const rapidezDespues = hipotDet(llama.velocidadX, llama.velocidadY);
   const tope = Math.max(PARAMETROS.jetpackVelocidadMaxima, rapidezAntes);
   if (rapidezDespues > tope) {
     llama.velocidadX *= tope / rapidezDespues;
@@ -496,8 +496,8 @@ function boquillaDeManguera(llama, direccionX, direccionY) {
 
 function rociarConManguera(llama, dt) {
   const anguloRadianes = llama.angulo * Math.PI / 180;
-  const direccionX = Math.cos(anguloRadianes) * llama.mirando;
-  const direccionY = -Math.sin(anguloRadianes);
+  const direccionX = cosenoDet(anguloRadianes) * llama.mirando;
+  const direccionY = -senoDet(anguloRadianes);
   const boquilla = boquillaDeManguera(llama, direccionX, direccionY);
   const masa = PARAMETROS.mangueraMasaGota;
 
@@ -505,10 +505,10 @@ function rociarConManguera(llama, dt) {
   while (llama.gotasPendientes >= 1) {
     llama.gotasPendientes -= 1;
     if (particulasAgua.length >= MAXIMO_PARTICULAS_AGUA) continue;
-    const angulo = (llama.angulo + (Math.random() - 0.5) * DISPERSION_MANGUERA) * Math.PI / 180;
-    const rapidez = PARAMETROS.mangueraVelocidad * (0.9 + Math.random() * 0.2);
-    const velocidadX = Math.cos(angulo) * llama.mirando * rapidez;
-    const velocidadY = -Math.sin(angulo) * rapidez;
+    const angulo = (llama.angulo + (azarSim() - 0.5) * DISPERSION_MANGUERA) * Math.PI / 180;
+    const rapidez = PARAMETROS.mangueraVelocidad * (0.9 + azarSim() * 0.2);
+    const velocidadX = cosenoDet(angulo) * llama.mirando * rapidez;
+    const velocidadY = -senoDet(angulo) * rapidez;
     particulasAgua.push({
       x: boquilla.x, y: boquilla.y,
       velocidadX, velocidadY,
@@ -540,8 +540,8 @@ const DURACION_BATAZO = 0.3; // segundos de la animación del golpe
 
 function batear(llama) {
   const anguloRadianes = llama.angulo * Math.PI / 180;
-  const direccionX = Math.cos(anguloRadianes) * llama.mirando;
-  const direccionY = -Math.sin(anguloRadianes);
+  const direccionX = cosenoDet(anguloRadianes) * llama.mirando;
+  const direccionY = -senoDet(anguloRadianes);
   llama.tiempoBatazo = DURACION_BATAZO;
   sonarBatazo();
 
@@ -549,7 +549,7 @@ function batear(llama) {
     if (otra === llama || !otra.vivo) return false;
     const dx = otra.centroX - llama.centroX, dy = otra.centroY - llama.centroY;
     const adelante = dx * llama.mirando > -1; // no golpea a las que tiene detrás
-    return adelante && Math.hypot(dx, dy) <= PARAMETROS.bateAlcance;
+    return adelante && hipotDet(dx, dy) <= PARAMETROS.bateAlcance;
   });
   for (const otra of bateadas) {
     soltarLengua(otra);
