@@ -43,6 +43,7 @@ function dibujarHud(anchoPantalla, altoPantalla, unidad) {
   }
   if (juego.cartel && juego.pantalla === 'jugando' && !juego.pausado) dibujarCartel(anchoPantalla, altoPantalla, unidad);
   if (vista.grilla) dibujarContadorDeFps(unidad);
+  if (redOnline.activa && redOnline.sync) dibujarEstadoOnline(anchoPantalla, altoPantalla, unidad);
   if (juego.pantalla === 'titulo' || juego.pantalla === 'fin') dibujarPantallaSuperpuesta(anchoPantalla, altoPantalla, unidad);
   if (juego.pausado) dibujarMenuPausa(anchoPantalla, altoPantalla, unidad);
   if (juego.pantalla === 'titulo') {
@@ -71,6 +72,34 @@ function dibujarContadorDeFps(unidad) {
   ctx.font = fuente(unidad, 1.6, 800);
   ctx.fillStyle = fps >= 55 ? '#7dff9a' : fps >= 30 ? '#ffd38a' : '#ff6b5a';
   ctx.fillText(`${fps} FPS`, x + 1 * unidad, y + 2.1 * unidad);
+}
+
+/* ---------- Estado de la partida online ----------
+   Arriba al centro: ping y retraso de entrada (cuántos pasos de 1/60 s tarda en ejecutarse un
+   control). Si la simulación espera al otro jugador, o si las dos partidas se separaron, se avisa. */
+function dibujarEstadoOnline(anchoPantalla, altoPantalla, unidad) {
+  const estado = redOnline.sync.estado();
+  const x = anchoPantalla / 2, y = camara.geometria.franjaHud + 1 * unidad;
+  ctx.textAlign = 'center';
+  ctx.font = fuente(unidad, 1.2, 600);
+  const ping = estado.pingMs === null ? '…' : Math.round(estado.pingMs) + ' ms';
+  const textoPing = `ONLINE · ping ${ping} · retardo ${estado.retraso}`;
+  const colorPing = estado.pingMs === null || estado.pingMs < 80 ? 'rgba(125,255,154,0.85)' : estado.pingMs < 160 ? '#ffd38a' : '#ff9b8a';
+  ctx.fillStyle = 'rgba(6,10,20,0.6)';
+  const ancho = ctx.measureText(textoPing).width + 2 * unidad;
+  ctx.fillRect(x - ancho / 2, y - 1.5 * unidad, ancho, 2.2 * unidad);
+  ctx.fillStyle = colorPing;
+  ctx.fillText(textoPing, x, y);
+
+  if (estado.desincronizado) {
+    ctx.font = fuente(unidad, 2.6, 800);
+    ctx.fillStyle = '#ff5a4a';
+    ctx.fillText('⚠ LAS PARTIDAS SE DESINCRONIZARON', x, altoPantalla / 2);
+  } else if (estado.esperandoMs > 400) {
+    ctx.font = fuente(unidad, 2, 700);
+    ctx.fillStyle = '#ffd38a';
+    ctx.fillText('Esperando al otro jugador…', x, altoPantalla / 2);
+  }
 }
 
 /* ---------- Panel de cada jugador (equipo) ----------

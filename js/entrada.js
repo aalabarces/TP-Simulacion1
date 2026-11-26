@@ -127,7 +127,7 @@ function muestrearControlesLocales() {
   const tiempoReal = MODOS_DE_JUEGO[juego.modo].tiempoReal;
   for (let equipo = 0; equipo < comandosDelPaso.length; equipo++) {
     // Online solo hay controles locales para MI equipo (con cualquier teclado/joystick);
-    // los del otro jugador llegarán por la red (fase 3: sincronización).
+    // los del otro jugador llegan por la red (red-sincronizacion.js los pone en el paso que corresponde).
     const controlaLocalmente = redOnline.activa ? equipo === redOnline.equipoLocal : tiempoReal || equipo === juego.equipoActual;
     const aplica = controlaLocalmente && (tiempoReal || equipo === juego.equipoActual);
     if (aplica) {

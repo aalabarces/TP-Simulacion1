@@ -96,8 +96,27 @@ function siguienteLlamaViva(equipo, despuesDe) {
 
 /* ---------- Inicio de partida y de turno ---------- */
 
+/* Deja en su valor inicial todo lo de "juego" que pertenece a UNA partida. Sin esto, una partida que
+   empieza después de otra hereda sus valores (cuánto duraba la fase, el viento...). Online las dos PCs
+   terminaron la partida anterior en pasos distintos, así que cada una heredaría algo diferente. */
+function reiniciarEstadoDeLaPartida() {
+  juego.equipoActual = 0;
+  juego.fase = 'apuntar';
+  juego.tiempoTurnoRestante = PARAMETROS.duracionTurno;
+  juego.tiempoEnFase = 0;
+  juego.tiempoHastaCambioDeViento = 0;
+  juego.tiempoParaTerminar = -1;
+  juego.llamaBateada = null;
+  juego.cartel = null;
+  juego.temblor = 0;
+  juego.textoGanador = '';
+  juego.detalleFin = '';
+  viento = 0;
+}
+
 function empezarPartida(semilla) {
   prepararMundo(semilla); // online: las dos PCs pasan la misma semilla (la del anfitrión)
+  reiniciarEstadoDeLaPartida();
   juego.pantalla = 'jugando';
   juego.pausado = false;
   if (esTiempoReal()) {

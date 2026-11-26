@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Test de sincronización online</title>
+<style>
+  body { font: 14px system-ui, sans-serif; background: #15121c; color: #eee; margin: 16px; }
+  pre { background: #0d0b12; padding: 12px; border-radius: 8px; white-space: pre-wrap; }
+  .ok { color: #7dff9a; } .mal { color: #ff7a6a; }
+  iframe { width: 420px; height: 240px; border: 1px solid #555; margin-right: 8px; }
+</style>
+</head>
+<body>
+<!--
+  TEST DE SINCRONIZACIÓN ONLINE (fase 3)
+
+  Abre DOS copias completas del juego (en iframes) y las conecta por el lobby de verdad
+  (señalización local, ?red=local). Las maneja desde acá: les manda teclas reales (mover, apuntar,
+  saltar, cargar, cambiar de arma y de llama) y las avanza cuadro a cuadro con tiempos sintéticos,
+  mientras la red WebRTC entre ellas entrega los paquetes de verdad. Con red limpia y con latencia,
+  jitter y pérdida de paquetes simulados (RED_DEBUG), comprueba que a un MISMO paso las dos
+  simulaciones tienen el estado completo idéntico y que los hashes periódicos nunca difieren.
+
+  Uso: servir el proyecto (python .claude/servidor.py 8123) y abrir
+       http://localhost:8123/tests/lockstep.html
+  El resultado queda en pantalla y en window.__resultadoLockstep ({ terminado, ok, resultados }).
+
+  Nota: los tiempos se simulan, así que el retardo/ping reales de estos tests no son los de una
+  partida real; lo que se prueba es la corrección (mismo estado) y que el juego espera en vez de separarse.
+-->
+<h3>Test de sincronización online</h3>
+<div id="marcos"></div>
+<pre id="resultado">Corriendo… (tarda uno o dos minutos)</pre>
+<script>
+(async () => {
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const esperarHasta = async (fn, ms = 20000) => { const t0 = performance.now(); while (!fn()) { if (performance.now() - t0 > ms) throw new Error('timeout esperando: ' + fn); await sleep(20); } };
+  const crearFrame = src => new Promise(res => { const f = document.createElement('iframe'); f.onload = () => res(f); f.src = src; document.getElementById('marcos').appendChild(f); });
+  const salida = document.getElementById('resultado');
+  window.__resultadoLockstep = { terminado: false, ok: false, resultados: [] };
+
+  try {
+    const fa = await crearFrame('../index.html?red=local'), fb = await crearFrame('../index.html?red=local');
+    const A = fa.contentWindow, B = fb.contentWindow, g = (W, e) => W.eval(e);
+    A.requestAnimationFrame = () => 0; B.requestAnimationFrame = () => 0; // los cuadros los avanzo yo
+
+    // Conectar por el lobby de verdad
+    A.crearSalaOnline(); await esperarHasta(() => g(A, 'lobby.codigo'));
+    B.unirseASalaOnline(g(A, 'lobby.codigo'));
+    await esperarHasta(() => g(A, 'lobby.vista') === 'conectados' && g(B, 'lobby.vista') === 'conectados');
+
+    // Reloj sintético de cada juego: avanza 1/60 s por cuadro y nunca retrocede
+    const est = { A: { t: performance.now() }, B: { t: performance.now() } };
+    let cuadro = 0, redActual = {};
+
+    // Teclas de cada jugador (online sirven todos los esquemas)
+    const mezclar = a => { a = Math.imul(a ^ (a >>> 16), 0x45d9f3b); a = Math.imul(a ^ (a >>> 16), 0x45d9f3b); return (a ^ (a >>> 16)) >>> 0; };
+    const TECLAS = { A: ['KeyA', 'KeyD', 'KeyW', 'KeyS', 'Space', 'KeyF'], B: ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'ShiftRight', 'Enter'] };
+    const apretadas = { A: new Set(), B: new Set() };
+    const tecla = (W, tipo, code) => W.dispatchEvent(new W.KeyboardEvent(tipo, { code, bubbles: true }));
+    const tocar = (W, n, semilla, c) => {
+      if (c % 30 === 0) {
+        const h = mezclar(c * 31 + semilla);
+        TECLAS[n].forEach((code, i) => {
+          const debe = ((h >>> (i * 2)) & 3) === 0 || (i === 5 && (c % 120) < 60 && ((h >>> 20) & 1));
+          const esta = apretadas[n].has(code);
+          if (debe && !esta) { tecla(W, 'keydown', code); apretadas[n].add(code); }
+          if (!debe && esta) { tecla(W, 'keyup', code); apretadas[n].delete(code); }
+        });
+      }
+      if (c % 97 === 0) { const code = (c / 97) % 2 ? (n === 'A' ? 'KeyE' : 'Period') : (n === 'A' ? 'KeyQ' : 'Comma'); tecla(W, 'keydown', code); tecla(W, 'keyup', code); }
+      if (c % 211 === 0) { tecla(W, 'keydown', 'Tab'); tecla(W, 'keyup', 'Tab'); } // cambiar de llama (por turnos)
+    };
+    const correr = async (frames, red) => {
+      for (const W of [A, B]) Object.assign(W.eval('RED_DEBUG'), { latenciaMs: 0, jitterMs: 0, perdida: 0 }, red);
+      for (let i = 0; i < frames; i++) {
+        cuadro++; tocar(A, 'A', 11, cuadro); tocar(B, 'B', 22, cuadro);
+        est.A.t += 1000 / 60; A.cuadro(est.A.t); est.B.t += 1000 / 60; B.cuadro(est.B.t);
+        await sleep(0); // deja que WebRTC entregue los paquetes
+      }
+    };
+    const sync = e => [g(A, 'redOnline.sync.' + e), g(B, 'redOnline.sync.' + e)];
+    const hashCompleto = W => [0, 1, 2, 3, 4, 5, 6, 7].map(k => W.hashDeEstadoDelJuego(k)).join('-');
+    const igualarYComparar = async T => {
+      for (const W of [A, B]) g(W, `redOnline.sync.tickMaximo = ${T}`);
+      for (let guardia = 0; (sync('tick')[0] < T || sync('tick')[1] < T) && guardia < 4000; guardia++) await correr(1, redActual);
+      const ticks = sync('tick'), identico = hashCompleto(A) === hashCompleto(B);
+      for (const W of [A, B]) g(W, 'redOnline.sync.tickMaximo = Infinity');
+      return { ticks, identico };
+    };
+    const escenario = async (nombre, red, frames) => {
+      redActual = red;
+      const antes = { tick: sync('tick')[0], cmp: sync('comparaciones')[0], coinc: sync('coincidencias')[0] };
+      await correr(frames, red);
+      const { ticks, identico } = await igualarYComparar(Math.max(...sync('tick')) + 30);
+      const desinc = g(A, 'redOnline.sync.desincronizado') || g(B, 'redOnline.sync.desincronizado');
+      const comparaciones = sync('comparaciones')[0] - antes.cmp, coincidencias = sync('coincidencias')[0] - antes.coinc;
+      const r = { nombre, ok: identico && !desinc && ticks[0] === ticks[1] && comparaciones > 0 && coincidencias === comparaciones,
+        paso: ticks[0], pasosEn: `${sync('tick')[0] - antes.tick} de ${frames} cuadros`, retraso: sync('retraso'), hashes: `${coincidencias}/${comparaciones} coinciden`, estadoCompletoIdentico: identico, desincronizado: desinc };
+      window.__resultadoLockstep.resultados.push(r);
+      salida.textContent = JSON.stringify(window.__resultadoLockstep.resultados, null, 1);
+      return r;
+    };
+    const iniciar = async modo => {
+      // Se espera a que las DOS PCs tengan una sincronización NUEVA (no la de la partida anterior,
+      // que ya cumpliría las condiciones si el modo es el mismo)
+      const viejas = [g(A, 'redOnline.sync'), g(B, 'redOnline.sync')];
+      A.empezarPartidaComoAnfitrion(modo);
+      const listo = (W, i) => { const s = g(W, 'redOnline.sync'); return !!s && s !== viejas[i] && g(W, `juego.modo === '${modo}' && juego.pantalla === 'jugando'`); };
+      await esperarHasta(() => listo(A, 0) && listo(B, 1));
+      // (el reloj sintético sigue creciendo: nunca se lo hace retroceder)
+    };
+
+    const RED_MALA = { latenciaMs: 60, jitterMs: 40, perdida: 0.15 }, RED_PESIMA = { latenciaMs: 120, jitterMs: 80, perdida: 0.35 };
+    await iniciar('tiempoReal');
+    await escenario('TIEMPO REAL · red limpia', {}, 500);
+    await escenario('TIEMPO REAL · latencia 60 ms, jitter 40 ms, 15% de pérdida', RED_MALA, 500);
+    await escenario('TIEMPO REAL · latencia 120 ms, jitter 80 ms, 35% de pérdida', RED_PESIMA, 300);
+    // Después del mal momento (retraso 8) el retraso tiene que bajar a lo que pide una red limpia. El ping se
+    // mide en tiempo real (1 por segundo) y los cuadros de este test corren más rápido o más lento según el
+    // navegador, así que no se fija cuántos cuadros: se espera la condición (con un tope).
+    redActual = {};
+    let cuadrosDeRecuperacion = 0;
+    while (Math.max(...sync('retraso')) > 4 && cuadrosDeRecuperacion < 8000) { await correr(200, {}); cuadrosDeRecuperacion += 200; }
+    const rec = await escenario('TIEMPO REAL · red limpia otra vez (el retraso tiene que bajar a 4 o menos)', {}, 200);
+    const recuperacion = window.__resultadoLockstep.resultados[window.__resultadoLockstep.resultados.length - 1];
+    recuperacion.ok = rec.ok && Math.max(...rec.retraso) <= 4;
+    recuperacion.cuadrosParaRecuperar = cuadrosDeRecuperacion;
+
+    await iniciar('worms'); // se reinicia la partida por la misma conexión: también prueba el descarte de lo que quedó en vuelo
+    await escenario('WORMS (por turnos) · red limpia', {}, 500);
+    await escenario('WORMS (por turnos) · latencia 60 ms, jitter 40 ms, 15% de pérdida', RED_MALA, 500);
+    await escenario('WORMS (por turnos) · latencia 120 ms, jitter 80 ms, 35% de pérdida', RED_PESIMA, 300);
+
+    // Reinicios: en el mismo modo, y con las dos PCs en pasos distintos al momento de reiniciar
+    // (una avanza sola unos pasos antes: lo que quedó de la partida vieja no puede filtrarse a la nueva)
+    const desfasar = async () => { for (let i = 0; i < 6; i++) { est.A.t += 1000 / 60; A.cuadro(est.A.t); await sleep(0); } };
+    await desfasar(); await iniciar('worms');
+    await escenario('WORMS · reinicio en el mismo modo (PCs en pasos distintos)', {}, 400);
+    await desfasar(); await iniciar('clasico');
+    await escenario('CLÁSICO (por turnos) · red mala', RED_MALA, 400);
+    await desfasar(); await iniciar('tiempoReal');
+    await escenario('TIEMPO REAL · reinicio con red mala', RED_MALA, 400);
+
+    const r = window.__resultadoLockstep;
+    r.ok = r.resultados.every(x => x.ok);
+    r.terminado = true;
+    salida.innerHTML = `<b class="${r.ok ? 'ok' : 'mal'}">${r.ok ? 'TODO OK: las dos simulaciones se mantienen idénticas.' : 'HAY FALLOS'}</b>\n` + JSON.stringify(r.resultados, null, 1);
+  } catch (e) {
+    window.__resultadoLockstep.terminado = true;
+    window.__resultadoLockstep.error = String(e);
+    salida.innerHTML = `<b class="mal">Error: ${e}</b>`;
+  }
+})();
+</script>
+</body>
+</html>

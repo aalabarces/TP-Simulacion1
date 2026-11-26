@@ -12,6 +12,9 @@ class SinCache(http.server.SimpleHTTPRequestHandler):
         super().end_headers()
 
 
-socketserver.TCPServer.allow_reuse_address = True
-with socketserver.TCPServer(('', PUERTO), SinCache) as servidor:
+# Con hilos: el juego pide ~30 scripts a la vez, y dos copias abiertas juntas (el test de
+# sincronización online, tests/lockstep.html) desbordaban la cola de un servidor de un solo hilo.
+socketserver.ThreadingTCPServer.allow_reuse_address = True
+socketserver.ThreadingTCPServer.daemon_threads = True
+with socketserver.ThreadingTCPServer(('', PUERTO), SinCache) as servidor:
     servidor.serve_forever()

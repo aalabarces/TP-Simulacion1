@@ -15,11 +15,14 @@ const RED_CONFIG = {
   /* Pegar acá el objeto "firebaseConfig" de la consola de Firebase. No es secreto
      (va en cualquier web), pero conviene restringir la API key a tu dominio. */
   firebase: {
-    apiKey: '',
-    authDomain: '',
-    databaseURL: '',
-    projectId: '',
-    appId: ''
+    apiKey: "AIzaSyBvPU_mb8I-aL3kVYE7MZRYWO_NsiA5yiw",
+    authDomain: "tp-simulacion1.firebaseapp.com",
+    databaseURL: "https://tp-simulacion1-default-rtdb.firebaseio.com",
+    projectId: "tp-simulacion1",
+    storageBucket: "tp-simulacion1.firebasestorage.app",
+    messagingSenderId: "278631085234",
+    appId: "1:278631085234:web:3bf4dcda3ed5ed18d145ab",
+    measurementId: "G-SJ2GB0PYRB"
   },
 
   /* STUN: le dice a cada PC cuál es su dirección pública. Sirve para la mayoría de las
@@ -58,5 +61,6 @@ const redOnline = {
   activa: false,        // hay una partida online en curso
   esAnfitrion: false,
   equipoLocal: 0,       // 0 = J1 (anfitrión), 1 = J2 (invitado)
-  conexion: null        // ConexionRed (red-conexion.js)
+  conexion: null,       // ConexionRed (red-conexion.js)
+  sync: null            // SincronizacionRed (red-sincronizacion.js), existe mientras dura la partida
 };

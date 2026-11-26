@@ -284,6 +284,8 @@ function manejarControlDelLobby(mensaje) {
     const { semilla, modo } = lobby.inicioPendiente;
     lobby.inicioPendiente = null;
     iniciarPartidaOnline(semilla, modo);
+  } else if (mensaje.t === 'hash' && redOnline.sync) {
+    redOnline.sync.recibirHash(mensaje); // comparación de estado para detectar desincronización
   }
 }
 
@@ -296,6 +298,10 @@ function iniciarPartidaOnline(semilla, modo) {
   armaElegidaPendiente.fill(-1);
   juego.modo = modo;
   empezarPartida(semilla);
+  // Desde acá cada paso lo marca la sincronización (red-sincronizacion.js): los dos arrancan en el paso 0
+  const sync = redOnline.sync = new SincronizacionRed(redOnline.conexion, redOnline.equipoLocal, semilla);
+  redOnline.conexion.alRecibirEntradas = buffer => sync.recibirPaquete(buffer);
+  tiempoAcumulado = 0; // principal.js: sin atraso acumulado del menú
   cerrarLobby();
 }
 
@@ -304,8 +310,9 @@ function salirDeLaSala() {
   const conexion = redOnline.conexion;
   redOnline.conexion = null;
   redOnline.activa = false;
+  redOnline.sync = null;
   lobby.inicioPendiente = null;
-  if (conexion) { conexion.alCambiarEstado = null; conexion.alRecibirControl = null; conexion.cerrar(); }
+  if (conexion) { conexion.alCambiarEstado = null; conexion.alRecibirControl = null; conexion.alRecibirEntradas = null; conexion.cerrar(); }
   limpiarComandos();
   if (juego.pantalla !== 'titulo') volverAlMenuPrincipal();
 }

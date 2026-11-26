@@ -40,6 +40,7 @@ function simularPaso(dt) {
 }
 
 const MAXIMO_PASOS_POR_CUADRO = 3;
+const MAXIMO_PASOS_ONLINE = 6; // al volver de una espera se pueden recuperar más pasos por cuadro
 let instanteAnterior = performance.now();
 let tiempoAcumulado = 0;
 const estadisticas = { fps: 60, msSimulacion: 0, msDibujo: 0 };
@@ -52,7 +53,7 @@ function suavizar(promedio, valorNuevo) {
 
 function cuadro(instante) {
   // Segundos desde el cuadro anterior (máximo 0.1 s, por si la pestaña estuvo en pausa)
-  const transcurrido = Math.min((instante - instanteAnterior) / 1000, 0.1);
+  const transcurrido = Math.max(0, Math.min((instante - instanteAnterior) / 1000, 0.1)); // nunca negativo
   instanteAnterior = instante;
   actualizarJoysticks(); // leer los joysticks una vez por cuadro (ver joystick.js)
   // En pausa no avanza la simulación ni las animaciones (tiempoTotal): el mundo queda congelado
@@ -64,13 +65,23 @@ function cuadro(instante) {
 
   const inicioSimulacion = performance.now();
   let pasosHechos = 0;
-  while (tiempoAcumulado >= PASO_SIMULACION && pasosHechos < MAXIMO_PASOS_POR_CUADRO) {
-    muestrearControlesLocales();   // dispositivos locales → comandos de este paso
+  // Online (ver red-sincronizacion.js): los pasos los marca la sincronización y no se descarta
+  // atraso: un paso solo se ejecuta si ya llegaron los comandos del otro jugador
+  const sync = redOnline.activa ? redOnline.sync : null;
+  const maximoPasos = sync ? MAXIMO_PASOS_ONLINE : MAXIMO_PASOS_POR_CUADRO;
+  while (tiempoAcumulado >= PASO_SIMULACION && pasosHechos < maximoPasos) {
+    if (sync) { if (!sync.prepararPaso()) break; }  // sin los comandos del otro: se espera
+    else muestrearControlesLocales();               // dispositivos locales → comandos de este paso
     simularPaso(PASO_SIMULACION);
+    if (sync) sync.alTerminarPaso();
     tiempoAcumulado -= PASO_SIMULACION;
     pasosHechos++;
   }
-  if (pasosHechos === MAXIMO_PASOS_POR_CUADRO) tiempoAcumulado = 0; // descartar el atraso
+  if (sync) {
+    sync.enviarPaquete();
+    // Si hubo que esperar, no se acumula atraso sin límite (después sería una ráfaga de pasos)
+    tiempoAcumulado = Math.min(tiempoAcumulado, PASO_SIMULACION * MAXIMO_PASOS_ONLINE);
+  } else if (pasosHechos === MAXIMO_PASOS_POR_CUADRO) tiempoAcumulado = 0; // descartar el atraso
   const finSimulacion = performance.now();
 
   if (!juego.pausado) leerCamaraManual(transcurrido);
