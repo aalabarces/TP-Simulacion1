@@ -75,6 +75,17 @@
 <script src="js/hud.js"></script>            <!-- interfaz: vida, tiempo, viento, armas -->
 <script src="js/debug.js"></script>           <!-- panel de debug y sliders -->
 <script src="js/sonido.js"></script>          <!-- efectos de sonido sintetizados (Web Audio API) -->
+
+<!-- Online (ver plans/multijugador-online.md y firebase/CONFIGURAR.md). Firebase se carga de la web:
+     si no hay internet solo se desactiva el online, el juego local no se entera. -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="js/red-config.js"></script>       <!-- configuración de Firebase, STUN/TURN y estado online -->
+<script src="js/red-senalizacion.js"></script> <!-- encontrar al otro jugador (Firebase) -->
+<script src="js/red-conexion.js"></script>     <!-- conexión WebRTC con dos canales -->
+<script src="js/lobby.js"></script>            <!-- panel para crear/unirse a una sala -->
+
 <script src="js/principal.js"></script>       <!-- bucle principal del juego -->
 </body>
 </html>

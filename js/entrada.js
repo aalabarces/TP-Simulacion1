@@ -102,6 +102,7 @@ function leerControles(jugador) {
 /* ¿A qué equipo le llegan los controles de este jugador? En Tiempo real, a su equipo;
    en los modos por turnos, al equipo que tiene el turno (cualquier control sirve). */
 function equipoQueControla(jugador) {
+  if (redOnline.activa) return redOnline.equipoLocal; // online: todos los controles locales son de mi equipo
   if (MODOS_DE_JUEGO[juego.modo].tiempoReal) return jugador === CUALQUIER_JUGADOR ? 0 : jugador;
   return juego.equipoActual;
 }
@@ -125,8 +126,12 @@ function pedirArma(llama, numeroArma) {
 function muestrearControlesLocales() {
   const tiempoReal = MODOS_DE_JUEGO[juego.modo].tiempoReal;
   for (let equipo = 0; equipo < comandosDelPaso.length; equipo++) {
-    if (tiempoReal || equipo === juego.equipoActual) {
-      const comando = leerControles(tiempoReal ? equipo : CUALQUIER_JUGADOR);
+    // Online solo hay controles locales para MI equipo (con cualquier teclado/joystick);
+    // los del otro jugador llegarán por la red (fase 3: sincronización).
+    const controlaLocalmente = redOnline.activa ? equipo === redOnline.equipoLocal : tiempoReal || equipo === juego.equipoActual;
+    const aplica = controlaLocalmente && (tiempoReal || equipo === juego.equipoActual);
+    if (aplica) {
+      const comando = leerControles(tiempoReal && !redOnline.activa ? equipo : CUALQUIER_JUGADOR);
       comando.acciones = accionesPendientes[equipo];
       comando.elegirArma = armaElegidaPendiente[equipo];
       asignarComando(equipo, comando);
@@ -140,6 +145,7 @@ function muestrearControlesLocales() {
 
 /* Acciones de un solo toque, vengan del teclado o de un joystick. */
 function ejecutarAccion(accion, jugador) {
+  if (redOnline.lobbyAbierto) return; // con el panel de "Jugar online" abierto, el juego de fondo no responde
   // En pausa solo se maneja el menú de pausa (ver turnos.js)
   if (juego.pausado) {
     switch (accion) {
@@ -152,6 +158,7 @@ function ejecutarAccion(accion, jugador) {
   }
   switch (accion) {
     case 'aceptar':
+      if (redOnline.activa) break; // la revancha online todavía no existe: reiniciar solo de un lado desincronizaría
       if (juego.pantalla !== 'jugando') {
         empezarPartida(); // en "fin" es la revancha con el mismo modo
         ignorarTeclasApretadas();   // el Enter que empezó la partida no cuenta como disparo
@@ -159,6 +166,8 @@ function ejecutarAccion(accion, jugador) {
       }
       break;
     case 'menu':
+      // Online no se pausa (el otro jugador sigue): el menú es para salir de la sala
+      if (redOnline.activa) { if (confirm('¿Salir de la partida online?')) salirDeLaSala(); break; }
       // Jugando: pausa. En la pantalla de fin: al menú principal (con un mapa nuevo de fondo)
       if (juego.pantalla === 'jugando') pausarPartida();
       else if (juego.pantalla === 'fin') volverAlMenuPrincipal();
@@ -187,7 +196,10 @@ window.addEventListener('keydown', evento => {
   // Si había un slider del panel de debug enfocado, se le quita el foco
   // para que las flechas muevan al jugador y no al slider.
   const elementoEnfocado = document.activeElement;
-  if (elementoEnfocado && elementoEnfocado.tagName === 'INPUT') elementoEnfocado.blur();
+  if (elementoEnfocado && elementoEnfocado.tagName === 'INPUT') {
+    if (elementoEnfocado.type === 'text') return; // se está escribiendo (código de sala): no es una tecla del juego
+    elementoEnfocado.blur();
+  }
 
   // El navegador solo deja arrancar el audio después de una acción del usuario
   iniciarAudio();
@@ -211,7 +223,8 @@ window.addEventListener('keydown', evento => {
     case 'KeyC': recentrarCamara(); break;
     case 'Digit8': cambiarVista('temperatura', !vista.temperatura); break;
     case 'Digit9': cambiarVista('grilla', !vista.grilla); break;
-    case 'Digit0': if (juego.pausado) break; if (juego.pantalla === 'jugando') empezarPartida(); else prepararMundo(); break;
+    case 'Digit0': if (juego.pausado || redOnline.activa || redOnline.lobbyAbierto) break; if (juego.pantalla === 'jugando') empezarPartida(); else prepararMundo(); break;
+    case 'KeyO': if (juego.pantalla === 'titulo') abrirLobby(); break; // Jugar online
   }
 
   // Menú de pausa: elegir la opción con ↑/↓ o W/S
