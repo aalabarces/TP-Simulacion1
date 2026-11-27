@@ -149,8 +149,14 @@ Modified:
 - **Fase 2 (señalización, transporte, lobby): hecha y probada con Firebase real.** Crear sala, unirse, intruso rechazado, sala inexistente, la sala se borra al conectar y la base no se puede listar. También probada en modo local (`?red=local`, sin Firebase). Cambio respecto de lo planeado: se espera a juntar los candidatos ICE antes de ofrecer/responder (sin *trickle*): la sala usa solo 2 escrituras (`offer`, `answer`). Sin probar: dos redes distintas, TURN.
 - **Fase 3 (lockstep en tiempo real): hecha.** `js/red-sincronizacion.js`. Retraso de entrada compartido (el mayor de lo que pide cada PC, 2 a 8 pasos), paquetes con todo lo no confirmado (ack) por el canal no confiable, hashes parciales cada 60 pasos que dicen qué parte difiere si hay desincronización. Probada con `tests/lockstep.html`: estado completo idéntico con red limpia y con latencia, jitter y pérdida de hasta 35 %.
   - Se encontraron y corrigieron en el camino: el retraso de cada PC no se podía arreglar solo (ahora es compartido); estado de `juego` heredado de la partida anterior que desincronizaba los reinicios (`reiniciarEstadoDeLaPartida`); paquetes de una partida anterior mezclándose con la nueva (id de partida).
-- **Fase 4 (por turnos): hecha.** Clásico y Worms probados por la misma sincronización, con ciclos de turno completos (apuntar → vuelo del proyectil → escape → asentando → turno del rival), cada jugador actuando solo en su turno, estado idéntico. HUD: "Sos J1 · ▶ TU TURNO" / "turno del rival". En la pantalla de fin online no hay revancha (solo salir).
-- **Fase 5: pendiente.** Reenvío del estado completo si hay desincronización (hoy solo se detecta y se avisa), reconexión, revancha, TURN, y volver al menú de forma prolija.
+- **Fase 4 (por turnos): hecha.** Clásico y Worms probados por la misma sincronización, con ciclos de turno completos (apuntar → vuelo del proyectil → escape → asentando → turno del rival), cada jugador actuando solo en su turno, estado idéntico. HUD: "Sos J1 · ▶ TU TURNO" / "turno del rival". (La revancha online llegó en la fase 5.)
+- **Fase 5 (recuperación): hecha.** `js/red-estado.js` (foto exacta del estado: 2,8 MB → ~150 KB comprimida, 10 trozos de 16 KB) y `js/red-recuperacion.js`:
+  - *Resincronización automática:* si los hashes difieren, el anfitrión congela la simulación, manda la foto y las dos PCs arrancan una época nueva desde ella. Máximo 3 por minuto; si no, se rinde y avisa. Probado corrompiendo una llama y una celda de la grilla, también con red mala.
+  - *Reconexión:* si se corta la conexión, el mundo se frena, el anfitrión reabre la misma sala (mismo código) y el invitado reintenta; al conectar se manda la foto y se sigue. 60 s de margen. Probado en local y con Firebase real (~1,7 s).
+  - *Revancha:* Enter en las dos PCs al terminar la partida empieza otra (otra semilla, mismo modo).
+  - *Salida limpia:* se avisa al otro (`salir`), también al cerrar la pestaña, así no intenta reconectar.
+  - *TURN:* `servidoresIce` ya lo admite; `?relay=1` (o `forzarRetransmision`) fuerza que todo pase por él para probarlo. **Sin probar contra un servidor TURN real.**
+  - Detalles que importan: la foto serializa los números sin perder el signo del cero (`-0` ≠ `0` en el hash) y los arreglos de trabajo se normalizan en las DOS PCs.
 - **Fase 6 (opcional): pendiente.** Jugador activo sin retraso en turnos.
 
 ### Cómo se prueba
@@ -158,6 +164,7 @@ Modified:
 | Qué | Cómo |
 |---|---|
 | Determinismo de la simulación | `node tests/determinismo.js --base` |
-| Sincronización online (dos juegos completos, red mala simulada, reinicios, ciclos de turno) | servir con `python .claude/servidor.py 8123` y abrir `http://localhost:8123/tests/lockstep.html` (tarda unos minutos; el resultado queda en pantalla) |
+| Sincronización online (dos juegos completos, red mala simulada, reinicios, ciclos de turno) | servir con `python .claude/servidor.py 8123` y abrir `http://localhost:8123/tests/lockstep.html` (unos minutos; el resultado queda en pantalla) |
+| Recuperación (corrupción → resincronización, corte de conexión, salida, revancha) | `http://localhost:8123/tests/resiliencia.html` |
 | A mano con dos pestañas, sin Firebase | `http://localhost:8123/?red=local` en las dos |
 | A mano con Firebase | `http://localhost:8123/` en dos pestañas o dos PCs (ver `firebase/CONFIGURAR.md`) |

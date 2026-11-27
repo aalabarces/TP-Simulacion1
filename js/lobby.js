@@ -242,18 +242,24 @@ async function unirseASalaOnline(texto) {
 /* Los canales abrieron: de acá en adelante Firebase no se usa más. */
 async function alConectar(conexion, senalizacion, esAnfitrion) {
   lobby.senalizacion = lobby.conexion = null;
+  reiniciarEstadoDeRecuperacion();
+  recuperacion.codigoDeSala = senalizacion.codigo; // para reabrir la misma sala si se corta la conexión (red-recuperacion.js)
   senalizacion.cerrar(); // borra la sala y corta con Firebase (sin esperar)
   redOnline.conexion = conexion;
   redOnline.esAnfitrion = esAnfitrion;
   redOnline.equipoLocal = esAnfitrion ? 0 : 1;
   conexion.alRecibirControl = manejarControlDelLobby;
+  conexion.alRecibirBinario = manejarBinarioDeRecuperacion;
   conexion.alCambiarEstado = (estado, detalle) => {
     if (estado === 'cerrada' || estado === 'fallo') alPerderLaConexion(detalle);
   };
   mostrarVista('conectados');
 }
 
-function alPerderLaConexion(detalle) {
+/* Se perdió la conexión (o la partida no se puede seguir). En plena partida primero se intenta
+   reconectar (red-recuperacion.js); "definitivo" = no tiene sentido intentarlo. */
+function alPerderLaConexion(detalle, definitivo) {
+  if (!definitivo && intentarReconectar(detalle)) return;
   const estabaJugando = redOnline.activa;
   salirDeLaSala();
   mostrarVista('error', { mensaje: (estabaJugando ? 'Se interrumpió la partida. ' : '') + (detalle || 'Se perdió la conexión.') });
@@ -286,6 +292,8 @@ function manejarControlDelLobby(mensaje) {
     iniciarPartidaOnline(semilla, modo);
   } else if (mensaje.t === 'hash' && redOnline.sync) {
     redOnline.sync.recibirHash(mensaje); // comparación de estado para detectar desincronización
+  } else {
+    manejarControlDeRecuperacion(mensaje); // pedirEstado, estado, salir, revancha
   }
 }
 
@@ -293,15 +301,14 @@ function manejarControlDelLobby(mensaje) {
    mundo recién generado y sin estado heredado (ver prepararMundo). */
 function iniciarPartidaOnline(semilla, modo) {
   redOnline.activa = true;
+  reiniciarEstadoDeRecuperacion(); // una partida nueva empieza sin revanchas ni resincronizaciones pendientes
   limpiarComandos();
   accionesPendientes.fill(0);
   armaElegidaPendiente.fill(-1);
   juego.modo = modo;
   empezarPartida(semilla);
   // Desde acá cada paso lo marca la sincronización (red-sincronizacion.js): los dos arrancan en el paso 0
-  const sync = redOnline.sync = new SincronizacionRed(redOnline.conexion, redOnline.equipoLocal, semilla);
-  redOnline.conexion.alRecibirEntradas = buffer => sync.recibirPaquete(buffer);
-  tiempoAcumulado = 0; // principal.js: sin atraso acumulado del menú
+  instalarSincronizacion(semilla);
   cerrarLobby();
 }
 
@@ -312,7 +319,15 @@ function salirDeLaSala() {
   redOnline.activa = false;
   redOnline.sync = null;
   lobby.inicioPendiente = null;
-  if (conexion) { conexion.alCambiarEstado = null; conexion.alRecibirControl = null; conexion.alRecibirEntradas = null; conexion.cerrar(); }
+  cancelarReconexion();
+  reiniciarEstadoDeRecuperacion();
+  recuperacion.codigoDeSala = '';
+  if (conexion) {
+    conexion.alCambiarEstado = conexion.alRecibirControl = conexion.alRecibirEntradas = conexion.alRecibirBinario = null;
+    // Se le avisa al otro (así no intenta reconectar) y se espera un instante a que el aviso salga
+    if (conexion.estado === 'abierta') { conexion.enviarControl({ t: 'salir' }); setTimeout(() => conexion.cerrar(), 200); }
+    else conexion.cerrar();
+  }
   limpiarComandos();
   if (juego.pantalla !== 'titulo') volverAlMenuPrincipal();
 }

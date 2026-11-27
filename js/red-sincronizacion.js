@@ -114,6 +114,7 @@ function hashDeEstadoDelJuego(trozo, acumulados) {
   numero(estadoAzarSim()); numero(viento); numero(numeroDePaso);
   numero(juego.equipoActual); numero(juego.llamaActual); numero(juego.tiempoTurnoRestante);
   numero(juego.tiempoEnFase); numero(juego.tiempoHastaCambioDeViento); numero(juego.tiempoParaTerminar);
+  numero(cascada.y); numero(cascada.xIzquierda); numero(cascada.xDerecha); numero(cascada.gotasPendientes); numero(cascada.tiempoSinMedir);
   for (const texto of [juego.fase, juego.pantalla]) for (let i = 0; i < texto.length; i++) mezclar(texto.charCodeAt(i));
   cerrarParte();
   for (const arreglo of [material, masaAgua, temperatura, frioAcumulado]) { trozoDe(arreglo); cerrarParte(); }
@@ -144,6 +145,7 @@ class SincronizacionRed {
     this.armaRetenida = -1;
 
     this.tickMaximo = Infinity;             // solo para pruebas: no pasar de este paso
+    this.congelado = false;                 // true mientras se resincroniza (red-recuperacion.js): no se ejecutan pasos
 
     // Estadísticas y ajuste del retraso
     this.bloqueadoDesde = 0;                // instante en que empezó a esperar al otro (0 = no espera)
@@ -163,7 +165,7 @@ class SincronizacionRed {
   /* ¿Se puede ejecutar el paso actual? Si sí, deja listos los comandos de los dos equipos. */
   prepararPaso() {
     const t = this.tick;
-    if (t >= this.tickMaximo) return false;
+    if (this.congelado || t >= this.tickMaximo) return false; // congelado: se está mandando/recibiendo la foto del estado
     if (t >= this.proximoRemoto) {
       if (this.bloqueadoDesde === 0) this.bloqueadoDesde = performance.now();
       this.bloqueosEnVentana++;
@@ -348,6 +350,6 @@ class SincronizacionRed {
   /* Datos para mostrar en pantalla. */
   estado() {
     const espera = this.bloqueadoDesde === 0 ? 0 : performance.now() - this.bloqueadoDesde;
-    return { pingMs: this.conexion.rttMs, retraso: this.retraso, esperandoMs: espera, desincronizado: this.desincronizado };
+    return { pingMs: this.conexion.rttMs, retraso: this.retraso, esperandoMs: espera, desincronizado: this.desincronizado, congelado: this.congelado };
   }
 }

@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Test de recuperación online</title>
+<style>
+  body { font: 14px system-ui, sans-serif; background: #15121c; color: #eee; margin: 16px; }
+  pre { background: #0d0b12; padding: 12px; border-radius: 8px; white-space: pre-wrap; }
+  .ok { color: #7dff9a; } .mal { color: #ff7a6a; }
+  iframe { width: 420px; height: 240px; border: 1px solid #555; margin-right: 8px; }
+</style>
+</head>
+<body>
+<!--
+  TEST DE RECUPERACIÓN ONLINE (fase 5)
+
+  Para cada situación abre DOS copias completas del juego (iframes), las conecta por el lobby de verdad
+  (señalización local, ?red=local) y las avanza cuadro a cuadro con tiempos sintéticos, con teclas reales,
+  mientras WebRTC entrega los paquetes. Situaciones:
+    1. Se corrompe una llama en una de las PCs      → se detecta, se manda la foto del estado y quedan idénticas
+    2. Se corrompe una celda de la grilla           → ídem
+    3. Lo mismo con red mala (latencia, jitter, pérdida)
+    4. Se corta la conexión en plena partida        → el mundo se frena, se reconecta solo y sigue idéntico
+    5. Un jugador sale a propósito                  → el otro se entera y NO intenta reconectar
+    6. Termina la partida y las dos piden revancha  → empieza otra, idéntica
+
+  Uso: servir el proyecto (python .claude/servidor.py 8123) y abrir http://localhost:8123/tests/resiliencia.html
+  El resultado queda en pantalla y en window.__resultadoResiliencia ({ terminado, ok, resultados }).
+-->
+<h3>Test de recuperación online</h3>
+<div id="marcos"></div>
+<pre id="resultado">Corriendo… (tarda unos minutos)</pre>
+<script>
+(async () => {
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const esperarHasta = async (fn, ms = 20000, que = '') => { const t0 = performance.now(); while (!fn()) { if (performance.now() - t0 > ms) throw new Error('timeout esperando ' + que); await sleep(25); } };
+  const crearFrame = src => new Promise(res => { const f = document.createElement('iframe'); f.onload = () => res(f); f.src = src; document.getElementById('marcos').appendChild(f); });
+  const salida = document.getElementById('resultado');
+  const resultados = window.__resultadoResiliencia = { terminado: false, ok: false, resultados: [] };
+  const mostrar = () => { salida.textContent = JSON.stringify(resultados.resultados, null, 1); };
+
+  let A, B, estA, estB, cuadro = 0;
+  const g = (W, e) => W.eval(e);
+  const sync = e => [g(A, 'redOnline.sync.' + e), g(B, 'redOnline.sync.' + e)];
+
+  /* ---- Teclas reales de cada jugador (online sirven todos los esquemas) ---- */
+  const mezclar = a => { a = Math.imul(a ^ (a >>> 16), 0x45d9f3b); a = Math.imul(a ^ (a >>> 16), 0x45d9f3b); return (a ^ (a >>> 16)) >>> 0; };
+  const TECLAS = { A: ['KeyA', 'KeyD', 'KeyW', 'KeyS', 'Space', 'KeyF'], B: ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'ShiftRight', 'Enter'] };
+  let apretadas = { A: new Set(), B: new Set() };
+  const tecla = (W, tipo, code) => W.dispatchEvent(new W.KeyboardEvent(tipo, { code, bubbles: true }));
+  const tocar = (W, n, semilla, c) => {
+    if (c % 30 !== 0) return;
+    const h = mezclar(c * 31 + semilla);
+    TECLAS[n].forEach((code, i) => {
+      const debe = ((h >>> (i * 2)) & 3) === 0, esta = apretadas[n].has(code);
+      if (debe && !esta) { tecla(W, 'keydown', code); apretadas[n].add(code); }
+      if (!debe && esta) { tecla(W, 'keyup', code); apretadas[n].delete(code); }
+    });
+  };
+
+  const correr = async (frames, red = {}) => {
+    for (const W of [A, B]) Object.assign(W.eval('RED_DEBUG'), { latenciaMs: 0, jitterMs: 0, perdida: 0 }, red);
+    for (let i = 0; i < frames; i++) {
+      cuadro++; tocar(A, 'A', 11, cuadro); tocar(B, 'B', 22, cuadro);
+      estA += 1000 / 60; A.cuadro(estA); estB += 1000 / 60; B.cuadro(estB);
+      await sleep(0); // deja que WebRTC entregue los paquetes
+    }
+  };
+  const hashCompleto = W => [0, 1, 2, 3, 4, 5, 6, 7].map(k => W.hashDeEstadoDelJuego(k)).join('-');
+
+  /* Frena las dos en el MISMO paso y compara TODO el estado */
+  const alinearYComparar = async (red, adelante = 30) => {
+    const T = Math.max(...sync('tick')) + adelante;
+    for (const W of [A, B]) g(W, `redOnline.sync.tickMaximo = ${T}`);
+    for (let guardia = 0; (sync('tick')[0] < T || sync('tick')[1] < T) && guardia < 4000; guardia++) await correr(1, red);
+    const ticks = sync('tick'), identico = hashCompleto(A) === hashCompleto(B);
+    for (const W of [A, B]) g(W, 'redOnline.sync.tickMaximo = Infinity');
+    return { ticks, identico };
+  };
+
+  /* Dos juegos nuevos, conectados por el lobby, y la partida empezada */
+  const nuevoPar = async modo => {
+    document.getElementById('marcos').replaceChildren();
+    const fa = await crearFrame('../index.html?red=local'), fb = await crearFrame('../index.html?red=local');
+    A = fa.contentWindow; B = fb.contentWindow;
+    A.requestAnimationFrame = () => 0; B.requestAnimationFrame = () => 0; // los cuadros los avanzo yo
+    estA = estB = performance.now(); cuadro = 0; apretadas = { A: new Set(), B: new Set() };
+    A.crearSalaOnline(); await esperarHasta(() => g(A, 'lobby.codigo'), 20000, 'el código de sala');
+    B.unirseASalaOnline(g(A, 'lobby.codigo'));
+    await esperarHasta(() => g(A, 'lobby.vista') === 'conectados' && g(B, 'lobby.vista') === 'conectados', 20000, 'la conexión');
+    A.empezarPartidaComoAnfitrion(modo);
+    await esperarHasta(() => g(A, '!!redOnline.sync') && g(B, '!!redOnline.sync') && g(A, `juego.modo === '${modo}'`) && g(B, `juego.modo === '${modo}'`), 20000, 'el inicio');
+  };
+
+  const registrar = (nombre, ok, detalle) => { resultados.resultados.push({ nombre, ok, ...detalle }); mostrar(); };
+
+  /* Corrompe algo SOLO en el invitado, espera la resincronización automática y verifica que quedaron idénticas */
+  const escenarioDeCorrupcion = async (nombre, corromper, modo, red, frames) => {
+    await nuevoPar(modo);
+    await correr(150, red);
+    const idAntes = sync('idPartida');
+    corromper(B);
+    // Hasta que las DOS tengan una época de sincronización nueva (y no estén resincronizando)
+    let cuadros = 0;
+    const resuelto = () => sync('idPartida').every((id, i) => id !== idAntes[i]) && sync('idPartida')[0] === sync('idPartida')[1]
+      && !g(A, 'recuperacion.resincronizando') && !g(B, 'recuperacion.resincronizando');
+    while (!resuelto() && cuadros < frames) { await correr(10, red); cuadros += 10; }
+    const huboResync = resuelto();
+    await correr(300, red); // la partida sigue unos segundos más
+    const { ticks, identico } = await alinearYComparar(red);
+    const desinc = sync('desincronizado'), cmp = sync('comparaciones'), coinc = sync('coincidencias');
+    registrar(nombre, huboResync && identico && !desinc[0] && !desinc[1] && cmp[0] > 0 && coinc[0] === cmp[0] && ticks[0] === ticks[1],
+      { resincronizo: huboResync, cuadrosHastaResincronizar: cuadros, estadoCompletoIdentico: identico, hashesTrasLaResincronizacion: `${coinc[0]}/${cmp[0]}`, desincronizadoDespues: desinc[0] || desinc[1] });
+  };
+
+  try {
+    const RED_MALA = { latenciaMs: 60, jitterMs: 40, perdida: 0.15 };
+
+    // 1. Una llama corrida en el invitado
+    await escenarioDeCorrupcion('1. Llama corrida en una PC (red limpia)', W => W.eval('llamas[0].x += 0.37'), 'tiempoReal', {}, 900);
+
+    // 2. Una celda de temperatura cambiada. Se elige una de un trozo de grilla que el hash revisa pronto (1/8 por vez)
+    await escenarioDeCorrupcion('2. Celda de la grilla cambiada en una PC (red limpia)', W => W.eval(`temperatura[${Math.floor(207360 * 0.55)}] += 3`), 'worms', {}, 1200);
+
+    // 3. Lo mismo con red mala
+    await escenarioDeCorrupcion('3. Llama corrida con red mala (60 ms, jitter 40 ms, 15% de pérdida)', W => W.eval('llamas[0].y -= 0.5'), 'tiempoReal', RED_MALA, 1500);
+
+    // 4. Se corta la conexión en plena partida
+    {
+      await nuevoPar('worms');
+      await correr(200);
+      const idAntes = sync('idPartida'), tickAntes = sync('tick');
+      g(A, 'redOnline.conexion.cerrar()'); // la corta de un lado; el otro lo nota solo
+      await esperarHasta(() => g(A, '!!recuperacion.reconectando') && g(B, '!!recuperacion.reconectando') || false, 15000, 'que las dos noten el corte').catch(async () => { await correr(1); });
+      let cuadros = 0, ticksSiguieronAvanzando = false, vistoReconectando = false;
+      const reconectado = () => g(A, '!recuperacion.reconectando && !recuperacion.resincronizando && !!redOnline.conexion && redOnline.conexion.estado === "abierta"')
+        && g(B, '!recuperacion.reconectando && !recuperacion.resincronizando && !!redOnline.conexion && redOnline.conexion.estado === "abierta"')
+        && sync('idPartida').every((id, i) => id !== idAntes[i]) && sync('idPartida')[0] === sync('idPartida')[1];
+      let tickAlCortar = null;
+      while (!reconectado() && cuadros < 6000) {
+        if (g(A, '!!recuperacion.reconectando') && tickAlCortar === null) { vistoReconectando = true; tickAlCortar = sync('tick'); }
+        await correr(10); cuadros += 10;
+        if (tickAlCortar !== null && g(A, '!!recuperacion.reconectando')) {
+          const ahora = sync('tick');
+          if (ahora[0] !== tickAlCortar[0] || ahora[1] !== tickAlCortar[1]) ticksSiguieronAvanzando = true;
+        }
+      }
+      const volvio = reconectado();
+      await correr(300);
+      const { ticks, identico } = await alinearYComparar({});
+      const desinc = sync('desincronizado'), cmp = sync('comparaciones'), coinc = sync('coincidencias');
+      registrar('4. Se corta la conexión en plena partida (reconexión + estado)', volvio && vistoReconectando && !ticksSiguieronAvanzando && identico && !desinc[0] && !desinc[1] && coinc[0] === cmp[0] && ticks[0] === ticks[1],
+        { reconecto: volvio, vioElEstadoReconectando: vistoReconectando, elMundoSeFrenoMientrasTanto: !ticksSiguieronAvanzando, cuadrosHastaReconectar: cuadros, estadoCompletoIdentico: identico, hashes: `${coinc[0]}/${cmp[0]}` });
+    }
+
+    // 5. Un jugador sale a propósito: el otro no debe intentar reconectar
+    {
+      await nuevoPar('worms');
+      await correr(100);
+      B.salirDeLaSala();
+      await correr(120); // alcanza para el aviso (200 ms) y el cierre
+      const activaA = g(A, 'redOnline.activa'), reconectando = g(A, '!!recuperacion.reconectando');
+      const vista = g(A, 'lobby.vista'), texto = g(A, 'document.getElementById("lobby").innerText');
+      registrar('5. Un jugador sale a propósito (el otro no reintenta)', !activaA && !reconectando && vista === 'error' && /salió/.test(texto),
+        { elOtroSalioDeLaPartida: !activaA, intentoReconectar: reconectando, mensajeQueVe: texto.replace(/\s+/g, ' ').slice(0, 90) });
+    }
+
+    // 6. Revancha: se termina la partida (mismo cambio en las dos PCs, en el mismo paso) y las dos la piden
+    {
+      await nuevoPar('tiempoReal');
+      await correr(150);
+      const semillaVieja = g(A, 'mapa.semilla'), idViejo = sync('idPartida');
+      const T = Math.max(...sync('tick')) + 20;
+      for (const W of [A, B]) g(W, `redOnline.sync.tickMaximo = ${T}`);
+      for (let guardia = 0; (sync('tick')[0] < T || sync('tick')[1] < T) && guardia < 2000; guardia++) await correr(1);
+      for (const W of [A, B]) g(W, 'llamasDelEquipo(1).forEach(l => { l.vivo = false; l.vida = 0; })'); // gana el equipo 0
+      for (const W of [A, B]) g(W, 'redOnline.sync.tickMaximo = Infinity');
+      let cuadros = 0; while (!(g(A, "juego.pantalla") === 'fin' && g(B, "juego.pantalla") === 'fin') && cuadros < 1500) { await correr(10); cuadros += 10; }
+      const llegoAlFin = g(A, "juego.pantalla") === 'fin' && g(B, "juego.pantalla") === 'fin';
+      A.pedirRevancha(); await correr(30);
+      const anfitrionEspera = g(A, 'recuperacion.revanchaPropia') && !g(A, 'recuperacion.revanchaRival') && g(B, 'recuperacion.revanchaRival') && g(A, "juego.pantalla") === 'fin';
+      B.pedirRevancha();
+      cuadros = 0; while (!(g(A, "juego.pantalla") === 'jugando' && g(B, "juego.pantalla") === 'jugando' && sync('idPartida').every((id, i) => id !== idViejo[i])) && cuadros < 1500) { await correr(10); cuadros += 10; }
+      const empezoOtra = g(A, "juego.pantalla") === 'jugando' && g(B, "juego.pantalla") === 'jugando' && g(A, 'mapa.semilla') !== semillaVieja && g(A, 'mapa.semilla') === g(B, 'mapa.semilla');
+      await correr(300);
+      const { ticks, identico } = await alinearYComparar({});
+      const desinc = sync('desincronizado'), cmp = sync('comparaciones'), coinc = sync('coincidencias');
+      registrar('6. Revancha: las dos la piden y empieza otra partida', llegoAlFin && anfitrionEspera && empezoOtra && identico && !desinc[0] && !desinc[1] && coinc[0] === cmp[0] && ticks[0] === ticks[1],
+        { llegoAlFin, elQueLaPidePrimeroEspera: anfitrionEspera, empezoOtraPartidaConOtraSemilla: empezoOtra, estadoCompletoIdentico: identico, hashes: `${coinc[0]}/${cmp[0]}` });
+    }
+
+    resultados.ok = resultados.resultados.every(r => r.ok);
+    resultados.terminado = true;
+    salida.innerHTML = `<b class="${resultados.ok ? 'ok' : 'mal'}">${resultados.ok ? 'TODO OK: el juego se recupera de cada situación.' : 'HAY FALLOS'}</b>\n` + JSON.stringify(resultados.resultados, null, 1);
+  } catch (e) {
+    resultados.terminado = true;
+    resultados.error = String(e && e.stack || e);
+    salida.innerHTML = `<b class="mal">Error: ${e}</b>\n` + JSON.stringify(resultados.resultados, null, 1);
+  }
+})();
+</script>
+</body>
+</html>

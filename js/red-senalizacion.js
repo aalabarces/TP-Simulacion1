@@ -53,12 +53,13 @@ class SenalizacionFirebase {
     this.bd.goOnline();
   }
 
-  async crearSala() {
+  /* codigoFijo: para volver a abrir la MISMA sala al reconectar (el invitado ya conoce el código). */
+  async crearSala(codigoFijo) {
     await this.iniciar();
     this.esAnfitrion = true;
-    // Si el código ya existe (muy improbable) se prueba con otro
-    for (let intento = 0; intento < 5; intento++) {
-      const codigo = codigoDeSalaAleatorio();
+    // Si el código ya existe (muy improbable) se prueba con otro; con código fijo se intenta una sola vez
+    for (let intento = 0; intento < (codigoFijo ? 1 : 5); intento++) {
+      const codigo = codigoFijo || codigoDeSalaAleatorio();
       const sala = this.bd.ref('rooms/' + codigo);
       const resultado = await sala.transaction(actual =>
         actual === null ? { host: this.uid, creada: firebase.database.ServerValue.TIMESTAMP } : undefined);
@@ -155,8 +156,8 @@ class SenalizacionLocal {
     };
   }
 
-  async crearSala() {
-    this.codigo = codigoDeSalaAleatorio();
+  async crearSala(codigoFijo) {
+    this.codigo = codigoFijo || codigoDeSalaAleatorio();
     this._abrirCanal(mensaje => {
       if (mensaje.tipo === 'hola' && this.oferta) this._enviar('oferta', this.oferta);
       if (mensaje.tipo === 'respuesta' && this.resolverRespuesta) {

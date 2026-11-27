@@ -64,6 +64,21 @@ Algunas redes (NAT estricto, ciertos celulares u oficinas) no permiten la conexi
 `RED_CONFIG.servidoresIce` en `js/red-config.js`. Hay servicios con plan gratuito (por ejemplo Metered o
 Cloudflare TURN; conviene revisar sus límites vigentes).
 
+### Cómo probar que el TURN funciona
+
+Con dos jugadores en redes que sí se pueden conectar directo, la conexión nunca usa el TURN, así que no
+se nota si está bien configurado. Para forzarlo, abrir el juego con `?relay=1` en la URL en las **dos** PCs
+(o poner `forzarRetransmision: true` en `js/red-config.js`): todo el tráfico pasa por el servidor retransmisor.
+Si no conectan, el TURN está mal configurado (usuario, contraseña, URL o puertos). Sacar `?relay=1` después.
+
+## Si se corta la conexión en plena partida
+
+El juego intenta recuperarla solo durante 60 s (`tiempoDeReconexionMs`): el anfitrión vuelve a abrir la
+**misma sala** (mismo código) y el invitado la busca hasta que aparece. Al conectar, el anfitrión manda una foto
+de la partida (unos 150 KB comprimida) y se sigue donde estaban. Esto es lo único que vuelve a usar Firebase
+durante una partida. Si un jugador sale a propósito (Esc → confirmar) o cierra la pestaña, el otro se entera y no
+reintenta.
+
 ## Qué hay en la base de datos
 
 Solo existe mientras dos jugadores se conectan, y se borra apenas el canal abre (o si el anfitrión se

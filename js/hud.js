@@ -111,7 +111,19 @@ function dibujarEstadoOnline(anchoPantalla, altoPantalla, unidad) {
     ctx.fillText(texto, x, yIdentidad);
   }
 
-  if (estado.desincronizado) {
+  if (recuperacion.reconectando) {
+    const segundos = Math.max(0, Math.ceil((recuperacion.reconectando.hasta - performance.now()) / 1000));
+    ctx.font = fuente(unidad, 2.2, 700);
+    ctx.fillStyle = '#ffb36b';
+    ctx.fillText(`Se cortó la conexión. Reconectando… (${segundos} s)`, x, altoPantalla / 2);
+    ctx.font = fuente(unidad, 1.4, 600);
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.fillText('ESC / ≡ para salir', x, altoPantalla / 2 + 3 * unidad);
+  } else if (recuperacion.resincronizando) {
+    ctx.font = fuente(unidad, 2.2, 700);
+    ctx.fillStyle = '#ffd38a';
+    ctx.fillText('Resincronizando la partida…', x, altoPantalla / 2);
+  } else if (estado.desincronizado) {
     ctx.font = fuente(unidad, 2.6, 800);
     ctx.fillStyle = '#ff5a4a';
     ctx.fillText('⚠ LAS PARTIDAS SE DESINCRONIZARON', x, altoPantalla / 2);
@@ -605,8 +617,11 @@ function dibujarPantallaSuperpuesta(anchoPantalla, altoPantalla, unidad) {
   ctx.fillStyle = `rgba(255,255,255,${opacidad})`;
   ctx.font = fuente(unidad, 2, 700);
   ctx.textAlign = 'center';
-  // Online no hay revancha todavía: solo salir de la sala
-  const textoFin = redOnline.activa ? 'ESC / ≡ salir de la sala' : 'ENTER / A revancha   ·   ESC / ≡ menú';
+  // Online: la revancha empieza cuando las dos PCs la piden
+  const textoFin = !redOnline.activa ? 'ENTER / A revancha   ·   ESC / ≡ menú'
+    : recuperacion.revanchaPropia ? 'Esperando al rival…   ·   ESC / ≡ salir de la sala'
+    : recuperacion.revanchaRival ? '¡El rival quiere revancha!   ENTER / A aceptar   ·   ESC / ≡ salir'
+    : 'ENTER / A revancha   ·   ESC / ≡ salir de la sala';
   ctx.fillText(juego.pantalla === 'titulo' ? 'ENTER o START para empezar' : textoFin, anchoPantalla / 2, altoPantalla * 0.88);
 }
 

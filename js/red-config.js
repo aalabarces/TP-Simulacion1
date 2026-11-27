@@ -34,6 +34,11 @@ const RED_CONFIG = {
     { urls: 'stun:stun1.l.google.com:19302' }
   ],
 
+  /* true = probar el TURN: todo el tráfico pasa por el servidor retransmisor (también con ?relay=1 en la URL) */
+  forzarRetransmision: false,
+
+  tiempoDeReconexionMs: 60 * 1000, // cuánto se intenta recuperar una conexión caída antes de rendirse
+
   longitudCodigoDeSala: 6,
   /* Sin 0/O ni 1/I/L para que el código se pueda dictar sin confusiones (32 símbolos) */
   alfabetoCodigoDeSala: 'ABCDEFGHJKMNPQRSTUVWXYZ23456789',

@@ -40,12 +40,13 @@ class ConexionRed {
     this.alCambiarEstado = null;  // (estado, detalle)
     this.alRecibirEntradas = null; // (ArrayBuffer)
     this.alRecibirControl = null;  // (objeto)
+    this.alRecibirBinario = null;  // (ArrayBuffer): trozos de la foto del estado, por el canal confiable
   }
 
   /* ---------- Establecer la conexión ---------- */
 
   /* Anfitrión: crea los canales y la oferta, la publica y espera la respuesta. */
-  async conectarComoAnfitrion(senalizacion) {
+  async conectarComoAnfitrion(senalizacion, esperaMaximaMs = RED_CONFIG.tiempoDeEsperaDeInvitadoMs) {
     this._cambiarEstado('conectando', 'Preparando la conexión…');
     this._crearPeer();
     this.canalEntradas = this.pc.createDataChannel('entradas', { ordered: false, maxRetransmits: 0 });
@@ -58,7 +59,7 @@ class ConexionRed {
     await senalizacion.publicarOferta(this._descripcionLocal());
 
     this._cambiarEstado('conectando', 'Esperando que alguien se una…');
-    const respuesta = await senalizacion.esperarRespuesta(RED_CONFIG.tiempoDeEsperaDeInvitadoMs);
+    const respuesta = await senalizacion.esperarRespuesta(esperaMaximaMs);
     this._cambiarEstado('conectando', 'Conectando…');
     await this.pc.setRemoteDescription(respuesta);
     await this._esperarApertura();
@@ -83,7 +84,13 @@ class ConexionRed {
   }
 
   _crearPeer() {
-    this.pc = new RTCPeerConnection({ iceServers: RED_CONFIG.servidoresIce });
+    // Para probar un servidor TURN: forzarRetransmision (o ?relay=1) hace que TODO pase por el TURN
+    // en vez de la conexión directa; si no hay TURN configurado, no conecta (y eso es lo esperable)
+    const soloRetransmision = RED_CONFIG.forzarRetransmision || new URLSearchParams(location.search).get('relay') === '1';
+    this.pc = new RTCPeerConnection({
+      iceServers: RED_CONFIG.servidoresIce,
+      iceTransportPolicy: soloRetransmision ? 'relay' : 'all'
+    });
     this.pc.onconnectionstatechange = () => {
       const estado = this.pc.connectionState;
       if (estado === 'failed') this._fallar('No se pudo conectar con el otro jugador (¿red estricta? ver TURN en firebase/CONFIGURAR.md)');
@@ -147,6 +154,10 @@ class ConexionRed {
         if (this.alRecibirEntradas) this.alRecibirEntradas(evento.data);
         return;
       }
+      if (typeof evento.data !== 'string') { // binario por el canal de control: trozos de la foto del estado
+        if (this.alRecibirBinario) this.alRecibirBinario(evento.data);
+        return;
+      }
       let mensaje;
       try { mensaje = JSON.parse(evento.data); } catch (e) { return; }
       if (mensaje.t === 'ping') this.enviarControl({ t: 'pong', n: mensaje.n });
@@ -171,6 +182,11 @@ class ConexionRed {
   /* Mensajes que no pueden perderse. `mensaje` es un objeto (se manda como JSON). */
   enviarControl(mensaje) {
     this._enviarConRetraso(this.canalControl, JSON.stringify(mensaje), RED_DEBUG.latenciaMs);
+  }
+
+  /* Datos binarios que no pueden perderse ni llegar desordenados (trozos de la foto del estado). */
+  enviarBinarioConfiable(buffer) {
+    this._enviarConRetraso(this.canalControl, buffer, RED_DEBUG.latenciaMs);
   }
 
   _enviarConRetraso(canal, datos, retrasoMs) {

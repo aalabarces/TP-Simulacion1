@@ -159,7 +159,8 @@ function ejecutarAccion(accion, jugador) {
   }
   switch (accion) {
     case 'aceptar':
-      if (redOnline.activa) break; // la revancha online todavía no existe: reiniciar solo de un lado desincronizaría
+      // Online no se reinicia de un solo lado (desincronizaría): en la pantalla de fin es pedir revancha
+      if (redOnline.activa) { if (juego.pantalla === 'fin') pedirRevancha(); break; }
       if (juego.pantalla !== 'jugando') {
         empezarPartida(); // en "fin" es la revancha con el mismo modo
         ignorarTeclasApretadas();   // el Enter que empezó la partida no cuenta como disparo
