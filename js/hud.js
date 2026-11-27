@@ -91,6 +91,26 @@ function dibujarEstadoOnline(anchoPantalla, altoPantalla, unidad) {
   ctx.fillStyle = colorPing;
   ctx.fillText(textoPing, x, y);
 
+  // Quién soy y, por turnos, si me toca: cada jugador controla solo su equipo
+  if (juego.pantalla === 'jugando') {
+    const miPaleta = PALETAS_JUGADORES[redOnline.equipoLocal];
+    const miTurno = !esTiempoReal() && juego.equipoActual === redOnline.equipoLocal;
+    const texto = esTiempoReal() ? `Sos ${miPaleta.nombre}`
+      : miTurno ? `Sos ${miPaleta.nombre} · ▶ TU TURNO` : `Sos ${miPaleta.nombre} · turno del rival`;
+    ctx.font = fuente(unidad, 1.4, 700);
+    const anchoIdentidad = ctx.measureText(texto).width + 2 * unidad;
+    const yIdentidad = y + 2.6 * unidad;
+    ctx.fillStyle = miTurno ? 'rgba(6,10,20,0.85)' : 'rgba(6,10,20,0.6)';
+    ctx.fillRect(x - anchoIdentidad / 2, yIdentidad - 1.5 * unidad, anchoIdentidad, 2.3 * unidad);
+    if (miTurno) {
+      ctx.strokeStyle = miPaleta.hud;
+      ctx.lineWidth = 0.2 * unidad;
+      ctx.strokeRect(x - anchoIdentidad / 2, yIdentidad - 1.5 * unidad, anchoIdentidad, 2.3 * unidad);
+    }
+    ctx.fillStyle = miPaleta.hud;
+    ctx.fillText(texto, x, yIdentidad);
+  }
+
   if (estado.desincronizado) {
     ctx.font = fuente(unidad, 2.6, 800);
     ctx.fillStyle = '#ff5a4a';
@@ -585,7 +605,9 @@ function dibujarPantallaSuperpuesta(anchoPantalla, altoPantalla, unidad) {
   ctx.fillStyle = `rgba(255,255,255,${opacidad})`;
   ctx.font = fuente(unidad, 2, 700);
   ctx.textAlign = 'center';
-  ctx.fillText(juego.pantalla === 'titulo' ? 'ENTER o START para empezar' : 'ENTER / A revancha   ·   ESC / ≡ menú', anchoPantalla / 2, altoPantalla * 0.88);
+  // Online no hay revancha todavía: solo salir de la sala
+  const textoFin = redOnline.activa ? 'ESC / ≡ salir de la sala' : 'ENTER / A revancha   ·   ESC / ≡ menú';
+  ctx.fillText(juego.pantalla === 'titulo' ? 'ENTER o START para empezar' : textoFin, anchoPantalla / 2, altoPantalla * 0.88);
 }
 
 /* Una tarjeta por modo disponible; la elegida se resalta. Se cambia con ←/→,

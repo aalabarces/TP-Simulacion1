@@ -118,6 +118,7 @@ function pedirAccion(bit, jugador) {
 
 /* Tocar el ícono de un arma en el HUD (celular). Mismas reglas que Q / E. */
 function pedirArma(llama, numeroArma) {
+  if (redOnline.activa && llama.equipo !== redOnline.equipoLocal) return; // online: solo las armas de mi equipo
   if (puedeCambiarDeArma(llama) && llama.arma !== numeroArma) armaElegidaPendiente[llama.equipo] = numeroArma;
 }
 

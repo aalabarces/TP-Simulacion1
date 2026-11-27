@@ -144,9 +144,20 @@ Modified:
 
 ## Estado de avance
 
-- **Fase 0 (determinismo): hecha.** `node tests/determinismo.js` (completo, tarda ~36 min) o `--base` (rápido, compara con los hashes de la fase 0). Falta correr el mismo replay en Chrome *y* Firefox: el test de Node solo simula otro motor perturbando `Math.*`.
-- **Fase 1 (comandos por paso): hecha.** `js/comandos.js`; la simulación solo lee `comandosDelPaso`. Verificada: los hashes de la fase 0 se reproducen idénticos.
-- **Fase 2 (señalización, transporte y lobby): código hecho y probado en modo local (`?red=local`).** Probado: handshake WebRTC (~0.5 s), los dos canales con sus opciones, pérdida/latencia simuladas (`RED_DEBUG`), desconexión, lobby con dos pestañas e inicio con la misma semilla y modo. **Sin probar contra Firebase real** (hace falta crear el proyecto: `firebase/CONFIGURAR.md`). Tampoco probado entre dos redes distintas ni con TURN.
-  - Cambio respecto de lo planeado: se espera a juntar los candidatos ICE antes de ofrecer/responder (sin *trickle*), así la sala usa solo 2 escrituras (`offer`, `answer`) en vez de decenas de candidatos.
-  - Online todavía **no sincroniza**: cada PC solo aplica los controles de su propio equipo. Eso es la fase 3.
-- **Fases 3–6: pendientes.**
+- **Fase 0 (determinismo): hecha.** `node tests/determinismo.js` (completo, ~36 min) o `--base` (rápido, ~7 min: compara con los hashes de la fase 0). Los tres modos reproducen los hashes de la fase 0 después de todos los cambios posteriores. Falta correr el mismo replay en Chrome *y* Firefox: el test de Node solo simula otro motor perturbando `Math.*`.
+- **Fase 1 (comandos por paso): hecha.** `js/comandos.js`; la simulación solo lee `comandosDelPaso`.
+- **Fase 2 (señalización, transporte, lobby): hecha y probada con Firebase real.** Crear sala, unirse, intruso rechazado, sala inexistente, la sala se borra al conectar y la base no se puede listar. También probada en modo local (`?red=local`, sin Firebase). Cambio respecto de lo planeado: se espera a juntar los candidatos ICE antes de ofrecer/responder (sin *trickle*): la sala usa solo 2 escrituras (`offer`, `answer`). Sin probar: dos redes distintas, TURN.
+- **Fase 3 (lockstep en tiempo real): hecha.** `js/red-sincronizacion.js`. Retraso de entrada compartido (el mayor de lo que pide cada PC, 2 a 8 pasos), paquetes con todo lo no confirmado (ack) por el canal no confiable, hashes parciales cada 60 pasos que dicen qué parte difiere si hay desincronización. Probada con `tests/lockstep.html`: estado completo idéntico con red limpia y con latencia, jitter y pérdida de hasta 35 %.
+  - Se encontraron y corrigieron en el camino: el retraso de cada PC no se podía arreglar solo (ahora es compartido); estado de `juego` heredado de la partida anterior que desincronizaba los reinicios (`reiniciarEstadoDeLaPartida`); paquetes de una partida anterior mezclándose con la nueva (id de partida).
+- **Fase 4 (por turnos): hecha.** Clásico y Worms probados por la misma sincronización, con ciclos de turno completos (apuntar → vuelo del proyectil → escape → asentando → turno del rival), cada jugador actuando solo en su turno, estado idéntico. HUD: "Sos J1 · ▶ TU TURNO" / "turno del rival". En la pantalla de fin online no hay revancha (solo salir).
+- **Fase 5: pendiente.** Reenvío del estado completo si hay desincronización (hoy solo se detecta y se avisa), reconexión, revancha, TURN, y volver al menú de forma prolija.
+- **Fase 6 (opcional): pendiente.** Jugador activo sin retraso en turnos.
+
+### Cómo se prueba
+
+| Qué | Cómo |
+|---|---|
+| Determinismo de la simulación | `node tests/determinismo.js --base` |
+| Sincronización online (dos juegos completos, red mala simulada, reinicios, ciclos de turno) | servir con `python .claude/servidor.py 8123` y abrir `http://localhost:8123/tests/lockstep.html` (tarda unos minutos; el resultado queda en pantalla) |
+| A mano con dos pestañas, sin Firebase | `http://localhost:8123/?red=local` en las dos |
+| A mano con Firebase | `http://localhost:8123/` en dos pestañas o dos PCs (ver `firebase/CONFIGURAR.md`) |
