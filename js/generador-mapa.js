@@ -805,4 +805,5 @@ function generarFondoYTextura(semilla) {
       texturaRuido[indice] = aByte((ruidoFractal(x * 0.18, y * 0.18, semilla + 77) * 0.75 + Math.random() * 0.25) * 255);
     }
   }
+  versionDelFondo++; // el dibujo con WebGL tiene que volver a subir el fondo (ver render-gl.js)
 }

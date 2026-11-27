@@ -213,11 +213,16 @@ function dibujarCuadro() {
   const temblorX = (Math.random() - 0.5) * intensidadTemblor;
   const temblorY = (Math.random() - 0.5) * intensidadTemblor;
 
-  // Terreno: solo se pinta lo que se ve
+  // Terreno: solo se pinta lo que se ve. Con WebGL2 lo calcula un shader en la
+  // placa de video (render-gl.js); si no hay, se calcula acá en JavaScript.
   const visible = rectanguloVisible(2);
   const anchoVisible = visible.x1 - visible.x0, altoVisible = visible.y1 - visible.y0;
-  pintarTerreno(visible.x0, visible.y0, visible.x1, visible.y1);
-  ctxTerreno.putImageData(imagenTerreno, 0, 0, visible.x0, visible.y0, anchoVisible, altoVisible);
+  let imagenDelTerreno = lienzoGL;
+  if (!pintarTerrenoGL(visible.x0, visible.y0, visible.x1, visible.y1)) {
+    pintarTerreno(visible.x0, visible.y0, visible.x1, visible.y1);
+    ctxTerreno.putImageData(imagenTerreno, 0, 0, visible.x0, visible.y0, anchoVisible, altoVisible);
+    imagenDelTerreno = lienzoTerreno;
+  }
 
   // Lo que se sale de la franja del mundo (por ejemplo, el temblor) se recorta
   ctx.save();
@@ -230,7 +235,7 @@ function dibujarCuadro() {
     anchoPantalla / 2 - camara.x * escala + temblorX,
     g.franjaHud + g.altoVista / 2 - camara.y * escala + temblorY);
   ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(lienzoTerreno, visible.x0, visible.y0, anchoVisible, altoVisible,
+  ctx.drawImage(imagenDelTerreno, visible.x0, visible.y0, anchoVisible, altoVisible,
                 visible.x0, visible.y0, anchoVisible, altoVisible);
 
   if (vista.grilla) {

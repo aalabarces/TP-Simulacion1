@@ -41,6 +41,7 @@
   <h3>Debug · Fire Splash (P) · <span id="version-debug"></span></h3>
   <label class="casilla"><input type="checkbox" id="casilla-temperatura"> Vista temperatura (T)</label>
   <label class="casilla"><input type="checkbox" id="casilla-grilla"> Vista grilla / estados (G)</label>
+  <label class="casilla"><input type="checkbox" id="casilla-terreno-gpu" checked> Terreno con GPU (WebGL2)</label>
   <div class="leyenda" id="leyenda"></div>
   <div class="estadisticas" id="estadisticas"></div>
   <h4>Parámetros</h4>
@@ -71,6 +72,7 @@
 <script src="js/controles-tactiles.js"></script> <!-- botones en pantalla para celular -->
 <script src="js/dibujo-personajes.js"></script> <!-- llama y fósforo dibujados por código -->
 <script src="js/render.js"></script>          <!-- dibujo del mundo -->
+<script src="js/render-gl.js"></script>       <!-- terreno calculado con un shader (WebGL2) -->
 <script src="js/camara.js"></script>        <!-- cámara: zoom, desplazamiento, seguimiento -->
 <script src="js/hud.js"></script>            <!-- interfaz: vida, tiempo, viento, armas -->
 <script src="js/debug.js"></script>           <!-- panel de debug y sliders -->

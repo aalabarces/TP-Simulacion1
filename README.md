@@ -53,6 +53,8 @@ js/
   dibujo-personajes.js  llama y fósforo dibujados por código
   camara.js             cámara: zoom, desplazamiento (teclado/joystick) y seguimiento
   render.js             dibujo del terreno y del mundo (solo lo que ve la cámara)
+  render-gl.js          terreno calculado con un shader en la placa de video (WebGL2);
+                        sin WebGL2 se usa el dibujo en JavaScript (interruptor en el panel P)
   hud.js                interfaz: vida, temporizador, viento, armas
   debug.js              panel de debug y sliders
   sonido.js             efectos de sonido sintetizados con Web Audio API (sin archivos)

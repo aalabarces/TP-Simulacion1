@@ -48,6 +48,9 @@ const texturaRuido = new Uint8Array(TOTAL_CELDAS);    // variación de brillo po
 const fondoRojo = new Uint8Array(TOTAL_CELDAS);       // color del fondo de la caverna
 const fondoVerde = new Uint8Array(TOTAL_CELDAS);
 const fondoAzul = new Uint8Array(TOTAL_CELDAS);
+/* Sube en 1 cada vez que se regeneran el fondo y la textura: así render-gl.js
+   sabe cuándo volver a subirlos a la placa de video (no cambian durante la partida). */
+let versionDelFondo = 0;
 
 /* Datos del mapa actual. */
 const mapa = {

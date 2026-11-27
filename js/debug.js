@@ -33,6 +33,17 @@ function cambiarVista(nombre, activa) {
 casillaTemperatura.addEventListener('change', () => cambiarVista('temperatura', casillaTemperatura.checked));
 casillaGrilla.addEventListener('change', () => cambiarVista('grilla', casillaGrilla.checked));
 
+/* Interruptor del terreno: GPU (shader, render-gl.js) o CPU (JavaScript, render.js).
+   Cambia en vivo, sin recargar, para comparar el tiempo de dibujo en la misma
+   partida y el mismo momento. Sin WebGL2 queda apagado y deshabilitado. */
+const casillaTerrenoGPU = document.getElementById('casilla-terreno-gpu');
+casillaTerrenoGPU.checked = terrenoGL.disponible && terrenoGL.usar;
+casillaTerrenoGPU.disabled = !terrenoGL.disponible;
+casillaTerrenoGPU.addEventListener('change', () => {
+  terrenoGL.usar = casillaTerrenoGPU.checked;
+  casillaTerrenoGPU.blur(); // para que Espacio (saltar) no vuelva a cambiarla
+});
+
 document.getElementById('boton-nuevo-mapa').addEventListener('click', evento => {
   evento.target.blur(); // para que Espacio no vuelva a "apretar" el botón
   if (juego.pantalla === 'jugando') empezarPartida();
@@ -84,6 +95,7 @@ function actualizarEstadisticas(estadisticas) {
     `FPS         ${estadisticas.fps.toFixed(0)}\n` +
     `simulación  ${estadisticas.msSimulacion.toFixed(2)} ms/paso\n` +
     `dibujo      ${estadisticas.msDibujo.toFixed(2)} ms\n` +
+    `terreno     ${terrenoGL.disponible && terrenoGL.usar ? 'GPU (WebGL2)' : 'CPU (JavaScript)'}\n` +
     `grilla      ${ANCHO_GRILLA}×${ALTO_GRILLA} (${TOTAL_CELDAS} celdas)\n` +
     `agua grilla ${celdasDeAguaEnGrilla}  masa ${masaTotalDeAgua.toFixed(0)}\n` +
     `flujos/paso ${celdasDeAguaActivas}\n` +
